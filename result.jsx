@@ -143,7 +143,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
   return (
     <div style={{
       height: '100%', display: 'flex', flexDirection: 'column',
-      background: T.bg, fontFamily: 'Pretendard', paddingTop: 54,
+      background: T.bg, fontFamily: "Pretendard", paddingTop: "env(safe-area-inset-top, 16px)",
     }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px 14px' }}>
