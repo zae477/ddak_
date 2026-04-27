@@ -362,15 +362,22 @@ const STATION_ALIAS = {
 function normalizeStationName(name) {
   if (!name) return '';
   let n = name.trim();
+  // "OO역 N호선" → "OO" (카카오가 "이수역 7호선" 형태로 반환)
+  n = n.replace(/역\s+\S+호선.*$/, '');
+  n = n.replace(/역\s+신분당.*$/, '');
+  n = n.replace(/역\s+경의.*$/, '');
+  n = n.replace(/역\s+수인.*$/, '');
+  n = n.replace(/역\s+공항.*$/, '');
+  n = n.replace(/역\s+우이.*$/, '');
+  n = n.replace(/역\s+GTX.*$/, '');
   // "OO역" → "OO"
   n = n.replace(/역$/, '');
   // "OO(XX선)" 괄호 제거
-  n = n.replace(/\(.*?\)$/, '').trim();
+  n = n.replace(/\(.*?\)/g, '').trim();
   // "서울 OO" 앞 서울 제거
   n = n.replace(/^서울\s+/, '');
   // 별칭 매핑
   if (STATION_ALIAS[n]) return STATION_ALIAS[n];
-  // 소문자 변환 후 재시도
   if (STATION_ALIAS[n.toLowerCase()]) return STATION_ALIAS[n.toLowerCase()];
   return n;
 }
