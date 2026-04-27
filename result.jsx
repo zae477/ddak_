@@ -19,18 +19,10 @@ function calcFairScore(times) {
   return Math.max(0, Math.min(100, Math.round(100 - devPenalty - sumPenalty)));
 }
 
-// ── 번화함 점수 계산 (PRD 2-3) ────────────────────────────────
+// ── 최종 점수 = 공평도만 사용 (번화함은 v2에서 고도화) ────────
 
-function calcVibeScore(venues, allVenues) {
-  const raw = (venues.restaurant * 0.4 + venues.cafe * 0.4 + venues.bar * 0.2);
-  const maxRaw = Math.max(...allVenues.map(v => v.restaurant * 0.4 + v.cafe * 0.4 + v.bar * 0.2), 1);
-  return Math.round((raw / maxRaw) * 100);
-}
-
-// ── 최종 점수 (PRD 2-4) ──────────────────────────────────────
-
-function calcFinalScore(fairScore, vibeScore) {
-  return Math.round(fairScore * 0.7 + vibeScore * 0.3);
+function calcFinalScore(fairScore) {
+  return fairScore;
 }
 
 // ── 다익스트라 기반 결과 계산 ────────────────────────────────
@@ -42,20 +34,28 @@ async function fetchResults(spots, timeSetting) {
   if (!window.SubwayGraph) throw new Error('SubwayGraph not loaded');
   const { findMiddleStations, normalizeStationName, findClosestStation, SUBWAY_GRAPH } = window.SubwayGraph;
 
-  // 1. 역명 정규화 + 그래프 존재 여부 확인
-  const validSpots = [];
+  // 1. 역명 정규화 + 그래프 매핑
+  // 동일역 처리: 같은 graphName으로 매핑되면 하나로 합치고 인원수로 가중치 반영
+  const spotMap = {}; // graphName → { spotName, weight }
   const failedSpots = [];
 
   for (const spot of filled) {
     const raw = normalizeStationName(spot.value);
     const matched = SUBWAY_GRAPH[raw] ? raw : findClosestStation(raw);
     if (matched) {
-      validSpots.push({ ...spot, graphName: matched });
+      if (spotMap[matched]) {
+        // 같은 역 중복 입력 → 가중치 +1 (최대 2)
+        spotMap[matched].weight = Math.min(spotMap[matched].weight + 1, 2);
+        spotMap[matched].displayName += '+' + spot.value;
+      } else {
+        spotMap[matched] = { displayName: spot.value, graphName: matched, weight: 1, coord: spot.coord };
+      }
     } else {
       failedSpots.push(spot.value);
     }
   }
 
+  const validSpots = Object.values(spotMap);
   if (validSpots.length < 2) throw new Error('no-coords');
 
   // 2. 다익스트라로 전체 후보역 + 소요시간 계산 (API 호출 없음)
@@ -66,67 +66,29 @@ async function fetchResults(spots, timeSetting) {
     return { results: [], expanded: false, failedSpots };
   }
 
-  // 3. 공평도 기준 상위 15개만 번화함 조회
-  const topCandidates = candidates
-    .map(c => ({ ...c, _fair: calcFairScore(c.times) }))
-    .sort((a, b) => b._fair - a._fair)
-    .slice(0, 15);
+  // 3. times의 from을 displayName으로 복원 + 가중치 반영
+  const candidatesWithDisplay = candidates.map(cand => ({
+    ...cand,
+    times: cand.times.map((t, i) => ({
+      ...t,
+      from: validSpots[i] ? validSpots[i].displayName : t.from,
+      weight: validSpots[i] ? validSpots[i].weight : 1,
+    })),
+  }));
 
-  // 4. 좌표 조회 (번화함 API용)
-  const coordMap = {};
-  for (const spot of validSpots) {
-    if (spot.coord && spot.coord.x) coordMap[spot.graphName] = spot.coord;
-  }
-
-  await Promise.all(
-    topCandidates.map(async (cand) => {
-      if (coordMap[cand.name]) return;
-      if (window.STATION_COORDS && window.STATION_COORDS[cand.name]) {
-        coordMap[cand.name] = window.STATION_COORDS[cand.name];
-        return;
-      }
-      const coord = await getStationCoord(cand.name);
-      if (coord) coordMap[cand.name] = coord;
-    })
-  );
-
-  // 5. 번화함 조회 (카카오 카테고리 API)
-  const venueData = await Promise.all(
-    topCandidates.map(async (cand) => {
-      const coord = coordMap[cand.name];
-      if (!coord) return { restaurant: 0, cafe: 0, bar: 0 };
-      const [restaurant, cafe, bar] = await Promise.all([
-        getVenueCount(coord.x, coord.y, 'FD6'),
-        getVenueCount(coord.x, coord.y, 'CE7'),
-        getVenueCount(coord.x, coord.y, 'PO3'),
-      ]);
-      return { restaurant, cafe, bar };
-    })
-  );
-
-  // 6. 점수 계산
-  const allVenues = venueData;
-  const scored = topCandidates.map((cand, idx) => {
+  // 4. 공평도 점수 계산 + 정렬
+  const scored = candidatesWithDisplay.map(cand => {
     const fairScore = calcFairScore(cand.times);
-    const vibeScore = calcVibeScore(venueData[idx], allVenues);
-    const finalScore = calcFinalScore(fairScore, vibeScore);
-    const coord = coordMap[cand.name];
-    const line = coord && coord.line ? coord.line : '';
-    const color = coord && coord.color ? coord.color : (window.getLineColor ? window.getLineColor(line) : '#8B95A1');
+    const finalScore = calcFinalScore(fairScore);
     return {
       ...cand,
-      x: coord && coord.x,
-      y: coord && coord.y,
-      line,
-      color,
-      venues: venueData[idx],
+      venues: { restaurant: 0, cafe: 0, bar: 0 }, // 번화함은 v2
       fairScore,
-      vibeScore,
       finalScore,
     };
   });
 
-  // 7. 정렬 + TOP 10
+  // 5. 정렬 + TOP 10
   const sorted = scored
     .sort((a, b) => b.finalScore - a.finalScore)
     .slice(0, 10)
