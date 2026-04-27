@@ -409,6 +409,18 @@ function findMiddleStations(spots) {
 
   if (dijkstraResults.length < 2) return [];
 
+  // 출발역 간 최대 소요시간 계산 (중간역 필터 기준)
+  // 출발역 A→B 직접 거리를 구해서, 그보다 먼 역은 중간역이 될 수 없음
+  const originDists = [];
+  for (let i = 0; i < dijkstraResults.length; i++) {
+    for (let j = i + 1; j < dijkstraResults.length; j++) {
+      const distAtoB = dijkstraResults[i].result.dist[dijkstraResults[j].graphName] ?? 999;
+      originDists.push(distAtoB);
+    }
+  }
+  // 출발역들 간 최대 직선거리
+  const maxOriginDist = Math.max(...originDists);
+
   // 모든 역에 대해 점수 계산
   const candidates = [];
   for (const station of ALL_STATIONS) {
@@ -421,9 +433,37 @@ function findMiddleStations(spots) {
     if (times.some(t => t.mins >= 999)) continue;
 
     const maxTime = Math.max(...times.map(t => t.mins));
+    const minTime = Math.min(...times.map(t => t.mins));
+    const sumTime = times.reduce((a, t) => a + t.mins, 0);
+
     if (maxTime > 70) continue; // 최대 70분 내 역만
 
+    // 출발역 자체는 제외 (0분인 역)
+    if (minTime === 0) continue;
+
+    // 출발역들 간 거리보다 합계가 너무 작은 역 제외
+    // (출발역 사이를 벗어난 방향에 있는 역 필터링)
+    // 예: 강남↔교대(3분)인데 신사(6+6=12분)는 합계가 출발역 거리의 4배 → 너무 멀리 돌아감
+    if (dijkstraResults.length === 2 && maxOriginDist > 0) {
+      // 중간역 합계가 출발역 직접거리보다 너무 크면 제외
+      // 허용 범위: 출발역 거리의 1.5배 + 5분
+      const threshold = Math.max(maxOriginDist * 2.0 + 5, 20);
+      if (sumTime > threshold) continue;
+    }
+
     candidates.push({ name: station, times });
+  }
+
+  // 출발역이 너무 가까운 경우 (5분 이내) → 출발역 자체를 후보로 반환
+  if (candidates.length === 0 || (dijkstraResults.length === 2 && maxOriginDist <= 5)) {
+    return dijkstraResults.map(r => ({
+      name: r.graphName,
+      times: dijkstraResults.map(r2 => ({
+        from: r2.spotName,
+        mins: r2.result.dist[r.graphName] ?? 0,
+        transfers: r2.result.transfers[r.graphName] ?? 0,
+      })),
+    }));
   }
 
   return candidates;
