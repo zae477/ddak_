@@ -118,7 +118,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
           setSelected(0);
         }
       })
-      .catch(() => {
+      .catch((err) => { console.error("[딱중간 에러]", err);
         setState({ status: 'api-error', results: [], expanded: false, failedSpots: [] });
       });
   }, [phase]);
