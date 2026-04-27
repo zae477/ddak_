@@ -2,20 +2,18 @@
 
 const { useState: useState2, useMemo: useMemo2, useRef: useRef2, useEffect: useEffect2 } = React;
 
-// ── 공평도 점수 계산 (PRD 2-2) ────────────────────────────────
-
-const WEIGHT_A = 1.2;
-const WEIGHT_B = 0.8;
+// ── 공평도 점수 계산 ─────────────────────────────────────────
+// 편차 페널티: 최대-최소 편차 1분당 2점 감점 (불공평할수록 낮음)
+// 합계 페널티: 평균 소요시간이 길수록 감점 (10분 기준, 1분당 0.67점)
 
 function calcFairScore(times) {
   if (!times || times.length === 0) return 0;
-  const mins = times.map(t => t.mins * (t.transfers > 0 ? 1 + t.transfers * 0.5 : 1));
+  const mins = times.map(t => t.mins + (t.transfers > 0 ? t.transfers * 1.5 : 0));
   const maxT = Math.max(...mins);
   const minT = Math.min(...mins);
-  const sumT = mins.reduce((a, b) => a + b, 0);
-  const normBase = Math.max(sumT, 1);
-  const devPenalty = (maxT - minT) * WEIGHT_A;
-  const sumPenalty = (sumT / normBase) * 100 * WEIGHT_B * 0.3;
+  const avgT = mins.reduce((a, b) => a + b, 0) / mins.length;
+  const devPenalty = (maxT - minT) * 2.0;
+  const sumPenalty = Math.max(0, (avgT - 10) * 0.67);
   return Math.max(0, Math.min(100, Math.round(100 - devPenalty - sumPenalty)));
 }
 
