@@ -1,10 +1,11 @@
-// result.jsx — 결과 화면 (실제 API 연동)
+// result.jsx — 결과 화면 (다익스트라 기반 중간역 계산)
 
 const { useState: useState2, useMemo: useMemo2, useRef: useRef2, useEffect: useEffect2 } = React;
 
 // ── 공평도 점수 계산 (PRD 2-2) ────────────────────────────────
-const WEIGHT_A = 1.2;  // 편차 페널티 가중치
-const WEIGHT_B = 0.8;  // 총합 페널티 가중치
+
+const WEIGHT_A = 1.2;
+const WEIGHT_B = 0.8;
 
 function calcFairScore(times) {
   if (!times || times.length === 0) return 0;
@@ -19,6 +20,7 @@ function calcFairScore(times) {
 }
 
 // ── 번화함 점수 계산 (PRD 2-3) ────────────────────────────────
+
 function calcVibeScore(venues, allVenues) {
   const raw = (venues.restaurant * 0.4 + venues.cafe * 0.4 + venues.bar * 0.2);
   const maxRaw = Math.max(...allVenues.map(v => v.restaurant * 0.4 + v.cafe * 0.4 + v.bar * 0.2), 1);
@@ -26,104 +28,115 @@ function calcVibeScore(venues, allVenues) {
 }
 
 // ── 최종 점수 (PRD 2-4) ──────────────────────────────────────
+
 function calcFinalScore(fairScore, vibeScore) {
   return Math.round(fairScore * 0.7 + vibeScore * 0.3);
 }
 
-// ── 실제 API 기반 결과 계산 ───────────────────────────────────
+// ── 다익스트라 기반 결과 계산 ────────────────────────────────
+
 async function fetchResults(spots, timeSetting) {
   const filled = spots.filter(s => s.value.trim());
   if (filled.length < 2) throw new Error('not enough spots');
 
-  // 1. 좌표 확보 (InputCard에서 coord가 있으면 재사용, 없으면 카카오 검색)
-  const coordResults = await Promise.all(
-    filled.map(async (s) => {
-      if (s.coord && s.coord.x) return { ...s, coord: s.coord };
-      const coord = await getStationCoord(s.value);
-      return { ...s, coord };
-    })
-  );
+  if (!window.SubwayGraph) throw new Error('SubwayGraph not loaded');
+  const { findMiddleStations, normalizeStationName, findClosestStation, SUBWAY_GRAPH } = window.SubwayGraph;
 
-  // 좌표 없는 출발지 필터 (에러 대상)
-  const validSpots = coordResults.filter(s => s.coord);
-  const failedSpots = coordResults.filter(s => !s.coord).map(s => s.value);
+  // 1. 역명 정규화 + 그래프 존재 여부 확인
+  const validSpots = [];
+  const failedSpots = [];
+
+  for (const spot of filled) {
+    const raw = normalizeStationName(spot.value);
+    const matched = SUBWAY_GRAPH[raw] ? raw : findClosestStation(raw);
+    if (matched) {
+      validSpots.push({ ...spot, graphName: matched });
+    } else {
+      failedSpots.push(spot.value);
+    }
+  }
 
   if (validSpots.length < 2) throw new Error('no-coords');
 
-  // 2. 무게중심 계산
-  const center = centroid(validSpots.map(s => s.coord));
+  // 2. 다익스트라로 전체 후보역 + 소요시간 계산 (API 호출 없음)
+  const graphSpots = validSpots.map(s => ({ value: s.graphName, coord: s.coord }));
+  const candidates = findMiddleStations(graphSpots);
 
-  // 3. 후보역 탐색 (5km, 없으면 10km)
-  let candidates = await getCandidateStations(center, 5);
-  let expanded = false;
   if (!candidates || candidates.length === 0) {
-    candidates = await getCandidateStations(center, 10);
-    expanded = true;
-  } else {
-    expanded = candidates.some(c => c.expanded);
+    return { results: [], expanded: false, failedSpots };
   }
-  if (!candidates || candidates.length === 0) return { results: [], expanded, failedSpots };
 
-  // 중복 제거 (같은 이름)
-  const seen = new Set();
-  const uniqueCandidates = candidates.filter(c => {
-    if (seen.has(c.name)) return false;
-    seen.add(c.name);
-    return true;
-  });
+  // 3. 공평도 기준 상위 15개만 번화함 조회
+  const topCandidates = candidates
+    .map(c => ({ ...c, _fair: calcFairScore(c.times) }))
+    .sort((a, b) => b._fair - a._fair)
+    .slice(0, 15);
 
-  // 4. 각 후보역별 소요시간 계산 (병렬)
-  const timeStr = timeSetting.useNow
-    ? new Date().toTimeString().slice(0, 5)
-    : timeSetting.time;
+  // 4. 좌표 조회 (번화함 API용)
+  const coordMap = {};
+  for (const spot of validSpots) {
+    if (spot.coord && spot.coord.x) coordMap[spot.graphName] = spot.coord;
+  }
 
-  const candidateData = await Promise.all(
-    uniqueCandidates.slice(0, 12).map(async (cand) => {
-      const times = await Promise.all(
-        validSpots.map(async (spot, i) => {
-          const route = await getSubwayRoute(spot.coord, cand, timeStr);
-          return { from: spot.value, idx: i, ...route };
-        })
-      );
-      return { ...cand, times };
+  await Promise.all(
+    topCandidates.map(async (cand) => {
+      if (coordMap[cand.name]) return;
+      if (window.STATION_COORDS && window.STATION_COORDS[cand.name]) {
+        coordMap[cand.name] = window.STATION_COORDS[cand.name];
+        return;
+      }
+      const coord = await getStationCoord(cand.name);
+      if (coord) coordMap[cand.name] = coord;
     })
   );
 
-  // 5. no-train 체크: 1명이라도 noTrain이면 전체 no-train
-  const hasNoTrain = candidateData.some(c => c.times.some(t => t.noTrain));
-
-  // 6. 장소 카운트 (카카오 카테고리) — 병렬
+  // 5. 번화함 조회 (카카오 카테고리 API)
   const venueData = await Promise.all(
-    candidateData.map(async (cand) => {
-      if (!cand.x || !cand.y) return { restaurant: 0, cafe: 0, bar: 0 };
+    topCandidates.map(async (cand) => {
+      const coord = coordMap[cand.name];
+      if (!coord) return { restaurant: 0, cafe: 0, bar: 0 };
       const [restaurant, cafe, bar] = await Promise.all([
-        getVenueCount(cand.x, cand.y, 'FD6'),
-        getVenueCount(cand.x, cand.y, 'CE7'),
-        getVenueCount(cand.x, cand.y, 'PO3'),
+        getVenueCount(coord.x, coord.y, 'FD6'),
+        getVenueCount(coord.x, coord.y, 'CE7'),
+        getVenueCount(coord.x, coord.y, 'PO3'),
       ]);
       return { restaurant, cafe, bar };
     })
   );
 
-  // 7. 점수 계산
+  // 6. 점수 계산
   const allVenues = venueData;
-  const scored = candidateData.map((cand, idx) => {
+  const scored = topCandidates.map((cand, idx) => {
     const fairScore = calcFairScore(cand.times);
     const vibeScore = calcVibeScore(venueData[idx], allVenues);
     const finalScore = calcFinalScore(fairScore, vibeScore);
-    return { ...cand, venues: venueData[idx], fairScore, vibeScore, finalScore };
+    const coord = coordMap[cand.name];
+    const line = coord && coord.line ? coord.line : '';
+    const color = coord && coord.color ? coord.color : (window.getLineColor ? window.getLineColor(line) : '#8B95A1');
+    return {
+      ...cand,
+      x: coord && coord.x,
+      y: coord && coord.y,
+      line,
+      color,
+      venues: venueData[idx],
+      fairScore,
+      vibeScore,
+      finalScore,
+    };
   });
 
-  // 8. 최종점수 내림차순 정렬, TOP 10
+  // 7. 정렬 + TOP 10
   const sorted = scored
     .sort((a, b) => b.finalScore - a.finalScore)
     .slice(0, 10)
     .map((r, idx) => ({ ...r, rank: idx + 1, score: r.fairScore }));
 
-  return { results: sorted, expanded, failedSpots, hasNoTrain };
+  return { results: sorted, expanded: false, failedSpots };
 }
 
 // ── ResultScreen ──────────────────────────────────────────────
+
 function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
   const [state, setState] = useState2({ status: 'idle', results: [], expanded: false, failedSpots: [] });
   const [selected, setSelected] = useState2(0);
@@ -135,11 +148,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
     if (phase !== 'result') return;
     setState({ status: 'loading', results: [], expanded: false, failedSpots: [] });
     fetchResults(spots, timeSetting)
-      .then(({ results, expanded, failedSpots, hasNoTrain }) => {
-        if (hasNoTrain) {
-          onNoTrain && onNoTrain();
-          return;
-        }
+      .then(({ results, expanded, failedSpots }) => {
         if (!results || results.length === 0) {
           setState({ status: 'no-result', results: [], expanded, failedSpots });
         } else {
@@ -158,9 +167,11 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
   if (status === 'loading' || status === 'idle') {
     return <LoadingScreen/>;
   }
+
   if (status === 'no-result') {
     return <NoResultScreen onRetry={onBack}/>;
   }
+
   if (status === 'api-error') {
     return <APIErrorScreen onRetry={onBack}/>;
   }
@@ -272,6 +283,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
 }
 
 // ── Result card ───────────────────────────────────────────────
+
 function ResultCard({ r, selected, onClick, delay = 0 }) {
   return (
     <div onClick={onClick} style={{
@@ -305,7 +317,7 @@ function ResultCard({ r, selected, onClick, delay = 0 }) {
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 10px', borderRadius: 10, background: T.accent,
           }}>
-            <FaceIcon index={t.idx} size={22}/>
+            <FaceIcon index={i} size={22}/>
             <span style={{ fontSize: 13, color: T.ink2, fontWeight: 600, letterSpacing: -0.2 }}>{t.from}</span>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               {t.transfers > 0 && (
@@ -336,7 +348,8 @@ function VenueStat({ emoji, label, count }) {
   );
 }
 
-// ── SVG 노선도 지도 — 중간역 정중앙, 핀치 줌 ────────────────
+// ── SVG 노선도 지도 ───────────────────────────────────────────
+
 function SubwayMap({ results, selected, spots }) {
   const containerRef = useRef2(null);
   const [transform, setTransform] = useState2({ scale: 1, tx: 0, ty: 0 });
@@ -345,8 +358,8 @@ function SubwayMap({ results, selected, spots }) {
   const pinchRef = useRef2(null);
   const MIN_SCALE = 0.5, MAX_SCALE = 4;
   const W = 340, H = 220;
-
   const n = Math.max(spots.length, 1);
+
   const originPositions = useMemo2(() =>
     Array.from({ length: n }, (_, i) => {
       const a = (-Math.PI / 2) + (i / n) * Math.PI * 2;
@@ -385,6 +398,7 @@ function SubwayMap({ results, selected, spots }) {
         };
       }
     };
+
     const onTouchMove = (e) => {
       const p = pinchRef.current;
       if (!p) return;
@@ -402,7 +416,9 @@ function SubwayMap({ results, selected, spots }) {
         setTransform(t => ({ ...t, tx: p.startTx + e.touches[0].clientX - p.startX, ty: p.startTy + e.touches[0].clientY - p.startY }));
       }
     };
+
     const onTouchEnd = () => { pinchRef.current = null; };
+
     el.addEventListener('touchstart', onTouchStart, { passive: false });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd);
@@ -427,6 +443,7 @@ function SubwayMap({ results, selected, spots }) {
         background: 'rgba(255,255,255,0.85)', borderRadius: 999, padding: '3px 8px',
         pointerEvents: 'none',
       }}>핀치로 확대·축소</div>
+
       {scale !== 1 && (
         <button onClick={() => setTransform({ scale: 1, tx: 0, ty: 0 })} style={{
           position: 'absolute', bottom: 10, right: 12, zIndex: 5,
@@ -435,6 +452,7 @@ function SubwayMap({ results, selected, spots }) {
           padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit',
         }}>초기화</button>
       )}
+
       <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
         <defs>
           <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -478,7 +496,7 @@ function SubwayMap({ results, selected, spots }) {
               </g>
             );
           })}
-          {/* 중간역 핀 — 항상 정중앙 */}
+          {/* 중간역 핀 */}
           <g>
             <circle cx={centerX} cy={centerY} r="32" fill={T.primary} opacity="0.08" style={{ animation:'pulse 2s ease-in-out infinite' }}/>
             <circle cx={centerX} cy={centerY} r="22" fill={T.primary} opacity="0.15" style={{ animation:'pulse 2s ease-in-out infinite 0.3s' }}/>
