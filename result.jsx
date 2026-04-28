@@ -226,17 +226,47 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
           {Icon.refresh(T.ink)}
           <span>다시 검색</span>
         </button>
-        <button style={{
-          flex: 1, height: 56, borderRadius: 100,
-          background: T.primary, color: '#fff', border: 'none',
-          fontSize: 16, fontWeight: 700, letterSpacing: -0.4,
-          fontFamily: 'inherit', cursor: 'pointer',
-          boxShadow: '0 6px 16px rgba(49,130,246,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        }}>
-          {Icon.share('#fff')}
-          <span>친구에게 공유하기</span>
-        </button>
+        <button
+  onClick={() => {
+    if (!window.Kakao) { alert('카카오 SDK 로딩 중입니다. 잠시 후 다시 눌러주세요.'); return; }
+    if (!window.Kakao.isInitialized()) {
+      window.Kakao.init(window.ENV.KAKAO_JS_KEY);
+    }
+    const stationNames = filled.map(s => s.value).join(' · ');
+    const topResult = results[0];
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: `📍 딱중간 — ${topResult.name}역`,
+        description: `${stationNames}의 공평한 중간지점이에요!\n공평도 ${topResult.score}점`,
+        imageUrl: 'https://project-six-ecru-51.vercel.app/og-image.png',
+        link: {
+          mobileWebUrl: 'https://project-six-ecru-51.vercel.app',
+          webUrl: 'https://project-six-ecru-51.vercel.app',
+        },
+      },
+      buttons: [
+        {
+          title: '나도 찾아보기',
+          link: {
+            mobileWebUrl: 'https://project-six-ecru-51.vercel.app',
+            webUrl: 'https://project-six-ecru-51.vercel.app',
+          },
+        },
+      ],
+    });
+  }}
+  style={{
+    flex: 1, height: 56, borderRadius: 100,
+    background: T.primary, color: '#fff', border: 'none',
+    fontSize: 16, fontWeight: 700, letterSpacing: -0.4,
+    fontFamily: 'inherit', cursor: 'pointer',
+    boxShadow: '0 6px 16px rgba(49,130,246,0.25)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+  }}>
+  {Icon.share('#fff')}
+  <span>친구에게 공유하기</span>
+</button>
       </div>
     </div>
   );
