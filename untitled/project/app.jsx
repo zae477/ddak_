@@ -16,30 +16,25 @@ const T = {
 };
 
 // ── API helpers ───────────────────────────────────────────────
-
-// 카카오 API 프록시 호출 (서버사이드 키 사용)
-async function kakaoFetch(endpoint, params) {
-  const qs = new URLSearchParams({ _endpoint: endpoint, ...params }).toString();
-  const res = await fetch(`/api/kakao?${qs}`);
-  if (!res.ok) throw new Error(`kakao ${endpoint} ${res.status}`);
-  return res.json();
-}
+const KAKAO_KEY = () => window.ENV && window.ENV.KAKAO_REST_API_KEY;
 
 // 카카오 키워드 검색 — 지하철역 자동완성
 async function searchKakaoStation(query) {
   if (!query.trim()) return [];
+  const key = KAKAO_KEY();
+  if (!key) return [];
   try {
-    const data = await kakaoFetch('keyword', {
-      query: query + ' 역',
-      category_group_code: 'SW8',
-      size: 7,
-    });
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query + ' 역')}&category_group_code=SW8&size=7`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) return [];
+    const data = await res.json();
     return (data.documents || []).map(d => ({
       name: d.place_name,
       address: d.road_address_name || d.address_name,
       x: parseFloat(d.x),
       y: parseFloat(d.y),
       id: d.id,
+      // 호선 파싱: place_name에서 "2호선" 등 추출
       line: parseLineFromName(d.place_name, d.category_name),
       color: getLineColor(parseLineFromName(d.place_name, d.category_name)),
     }));
@@ -75,12 +70,13 @@ function getLineColor(line) {
 
 // 카카오 좌표 조회 (역명으로 정확한 위치 가져오기)
 async function getStationCoord(stationName) {
+  const key = KAKAO_KEY();
+  if (!key) return null;
   try {
-    const data = await kakaoFetch('keyword', {
-      query: stationName,
-      category_group_code: 'SW8',
-      size: 1,
-    });
+    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(stationName)}&category_group_code=SW8&size=1`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) return null;
+    const data = await res.json();
     const d = data.documents && data.documents[0];
     if (!d) return null;
     return { x: parseFloat(d.x), y: parseFloat(d.y), name: d.place_name, id: d.id };
@@ -89,13 +85,13 @@ async function getStationCoord(stationName) {
 
 // 카카오 카테고리 장소 수 조회 (반경 500m)
 async function getVenueCount(x, y, categoryCode) {
+  const key = KAKAO_KEY();
+  if (!key) return 0;
   try {
-    const data = await kakaoFetch('category', {
-      category_group_code: categoryCode,
-      x, y,
-      radius: 500,
-      size: 1,
-    });
+    const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${categoryCode}&x=${x}&y=${y}&radius=500&size=1`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) return 0;
+    const data = await res.json();
     return data.meta ? data.meta.total_count : 0;
   } catch { return 0; }
 }
@@ -163,16 +159,15 @@ function centroid(coords) {
 // 후보역 목록 (카카오 검색 기반으로 보강된 수도권 주요역)
 // 실제로는 무게중심 기준 카카오 카테고리 검색으로 후보 생성
 async function getCandidateStations(center, radiusKm = 5) {
+  const key = KAKAO_KEY();
+  if (!key) return FALLBACK_STATIONS;
   try {
-    const radiusM = Math.min(radiusKm * 1000, 20000);
-    const data = await kakaoFetch('category', {
-      category_group_code: 'SW8',
-      x: center.x,
-      y: center.y,
-      radius: radiusM,
-      size: 15,
-      sort: 'distance',
-    });
+    const radiusM = radiusKm * 1000;
+    // 카카오 SW8(지하철역) 카테고리로 근처 역 탐색
+    const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=SW8&x=${center.x}&y=${center.y}&radius=${Math.min(radiusM, 20000)}&size=15&sort=distance`;
+    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
     if (!data.documents || data.documents.length === 0) {
       if (radiusKm < 10) return getCandidateStations(center, 10);
       return FALLBACK_STATIONS;
@@ -585,7 +580,7 @@ function InputCard({ index, spot, focused, onFocus, onBlur, onChange, onRemove }
             onChange={(e) => onChange(e.target.value, null)}
             onFocus={() => { onFocus(); setSuggestOpen(true); }}
             onBlur={() => { setTimeout(() => { setSuggestOpen(false); setSuggestions([]); }, 180); onBlur(); }}
-            placeholder={index === 0 ? '역을 검색해보세요' : `역을 검색해보세요`}
+            placeholder="역을 검색해보세요"
             style={{
               width: '100%', border: 'none', outline: 'none',
               fontSize: 16, fontWeight: 600, color: T.ink,
