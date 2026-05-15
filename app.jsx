@@ -486,41 +486,29 @@ function HomeScreen({ spots, setSpots, onSearch, focused, setFocused, timeSettin
 
 // ── Time picker ───────────────────────────────────────────────
 function TimePicker({ value, onChange }) {
-  const toggle = () => onChange({ ...value, useNow: !value.useNow });
-  const fmt = (d) => {
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const days = ['일','월','화','수','목','금','토'];
-    return `${mm}월 ${dd}일 (${days[d.getDay()]})`;
-  };
   return (
-    <div style={{ background: T.card, borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+    <div style={{ background: T.card, borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', opacity: 0.5, pointerEvents: 'none', userSelect: 'none' }}>
       <div style={{ display: 'flex', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, letterSpacing: -0.3 }}>현재 시간 기준</div>
           <div style={{ fontSize: 12, color: T.ink3, marginTop: 2, letterSpacing: -0.2 }}>
-            {value.useNow ? '지금 출발 기준으로 계산해요' : '선택한 시간으로 계산해요'}
+            지금 출발 기준으로 계산해요
           </div>
         </div>
-        <button onClick={toggle} style={{
+        <div style={{
           marginLeft: 'auto', width: 50, height: 30, borderRadius: 999,
-          background: value.useNow ? T.primary : '#D1D6DB',
-          border: 'none', cursor: 'pointer', padding: 0, position: 'relative', transition: 'background 0.2s',
+          background: '#D1D6DB', position: 'relative',
         }}>
           <div style={{
-            position: 'absolute', top: 3, left: value.useNow ? 23 : 3,
+            position: 'absolute', top: 3, left: 3,
             width: 24, height: 24, borderRadius: 999, background: '#fff',
-            transition: 'left 0.2s cubic-bezier(.2,.8,.2,1)',
             boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
           }}/>
-        </button>
-      </div>
-      {!value.useNow && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.line}`, display: 'flex', gap: 8, animation: 'fadeIn 0.25s ease' }}>
-          <DateField label="날짜" display={fmt(new Date(value.date))} value={value.date} type="date" onChange={(v) => onChange({ ...value, date: v })}/>
-          <DateField label="시간" display={value.time} value={value.time} type="time" onChange={(v) => onChange({ ...value, time: v })}/>
         </div>
-      )}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, color: T.ink3, fontWeight: 500, letterSpacing: -0.2 }}>
+        잠시만 기다려주세요, 오픈 예정이에요 🔜
+      </div>
     </div>
   );
 }
@@ -592,7 +580,7 @@ function InputCard({ index, spot, focused, onFocus, onBlur, onChange, onRemove }
             onChange={(e) => onChange(e.target.value, null)}
             onFocus={() => { onFocus(); setSuggestOpen(true); }}
             onBlur={() => { setTimeout(() => { setSuggestOpen(false); setSuggestions([]); }, 180); onBlur(); }}
-            placeholder={`${index + 1}번째 출발지 (지하철역)`}
+            placeholder="역을 검색해보세요"
             style={{
               width: '100%', border: 'none', outline: 'none',
               fontSize: 16, fontWeight: 600, color: T.ink,

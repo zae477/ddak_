@@ -185,8 +185,12 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
           </div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: T.ink, letterSpacing: -0.6, lineHeight: 1.3 }}>
             <span style={{ color: T.primary }}>{pick.name}</span>이<br/>
-            가장 공평한 중간이에요
+            딱 중간이에요
           </h2>
+          <p style={{ margin: '8px 0 0', fontSize: 13, color: T.ink3, fontWeight: 500, letterSpacing: -0.2, lineHeight: 1.6 }}>
+            역 근처 식당, 카페로 가장 만나기 좋은<br/>
+            장소도 추천드릴게요. 잠시만 기다려 주세요 ✨
+          </p>
         </div>
 
         {/* Result cards */}
