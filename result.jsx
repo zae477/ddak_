@@ -2,6 +2,43 @@
 
 const { useState: useState2, useMemo: useMemo2, useRef: useRef2, useEffect: useEffect2 } = React;
 
+// ── URL 인코딩/디코딩 ─────────────────────────────────────────
+
+function encodeShareData(spots, results) {
+  const payload = {
+    s: spots.map(s => s.value),
+    r: results.slice(0, 10).map(r => ({
+      n: r.name,
+      l: r.line || '',
+      c: r.color || '',
+      sc: r.score,
+      t: r.times.map(t => ({ f: t.from, m: t.mins, tr: t.transfers || 0 })),
+    })),
+  };
+  return btoa(encodeURIComponent(JSON.stringify(payload)));
+}
+
+function decodeShareData(encoded) {
+  try {
+    const payload = JSON.parse(decodeURIComponent(atob(encoded)));
+    const spots = payload.s.map((v, i) => ({ id: i + 1, value: v }));
+    const results = payload.r.map((r, idx) => ({
+      name: r.n,
+      line: r.l,
+      color: r.c,
+      score: r.sc,
+      fairScore: r.sc,
+      finalScore: r.sc,
+      rank: idx + 1,
+      times: r.t.map(t => ({ from: t.f, mins: t.m, transfers: t.tr })),
+      venues: { restaurant: 0, cafe: 0, bar: 0 },
+    }));
+    return { spots, results };
+  } catch {
+    return null;
+  }
+}
+
 // ── 공평도 점수 계산 ─────────────────────────────────────────
 // 편차 페널티: 최대-최소 편차 1분당 2점 감점 (불공평할수록 낮음)
 // 합계 페널티: 평균 소요시간이 길수록 감점 (10분 기준, 1분당 0.67점)
@@ -97,8 +134,12 @@ async function fetchResults(spots, timeSetting) {
 
 // ── ResultScreen ──────────────────────────────────────────────
 
-function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
-  const [state, setState] = useState2({ status: 'idle', results: [], expanded: false, failedSpots: [] });
+function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTrain }) {
+  const initialState = sharedResults && sharedResults.length > 0
+    ? { status: 'ok', results: sharedResults, expanded: false, failedSpots: [] }
+    : { status: 'idle', results: [], expanded: false, failedSpots: [] };
+
+  const [state, setState] = useState2(initialState);
   const [selected, setSelected] = useState2(0);
   const [showAll, setShowAll] = useState2(false);
   const [closedBanners, setClosedBanners] = useState2([]);
@@ -106,6 +147,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
 
   useEffect2(() => {
     if (phase !== 'result') return;
+    if (sharedResults && sharedResults.length > 0) return; // 공유 링크 접속 시 재계산 생략
     setState({ status: 'loading', results: [], expanded: false, failedSpots: [] });
     fetchResults(spots, timeSetting)
       .then(({ results, expanded, failedSpots }) => {
@@ -238,23 +280,26 @@ function ResultScreen({ spots, onBack, phase, timeSetting, onNoTrain }) {
     }
     const stationNames = filled.map(s => s.value).join(' · ');
     const topResult = results[0];
+    const shareParam = encodeShareData(filled, results);
+    const base = 'https://project-six-ecru-51.vercel.app';
+    const shareUrl = `${base}/?share=${shareParam}`;
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
         title: `📍 딱중간 — ${topResult.name}역`,
         description: `${stationNames}의 공평한 중간지점이에요!\n공평도 ${topResult.score}점`,
-        imageUrl: 'https://project-six-ecru-51.vercel.app/og-image.png',
+        imageUrl: `${base}/og-image.png`,
         link: {
-          mobileWebUrl: 'https://project-six-ecru-51.vercel.app',
-          webUrl: 'https://project-six-ecru-51.vercel.app',
+          mobileWebUrl: shareUrl,
+          webUrl: shareUrl,
         },
       },
       buttons: [
         {
-          title: '나도 찾아보기',
+          title: '결과 보기',
           link: {
-            mobileWebUrl: 'https://project-six-ecru-51.vercel.app',
-            webUrl: 'https://project-six-ecru-51.vercel.app',
+            mobileWebUrl: shareUrl,
+            webUrl: shareUrl,
           },
         },
       ],
@@ -507,4 +552,4 @@ function SubwayMap({ results, selected, spots }) {
   );
 }
 
-Object.assign(window, { ResultScreen });
+Object.assign(window, { ResultScreen, decodeShareData });

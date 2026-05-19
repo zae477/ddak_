@@ -14,14 +14,27 @@ function saveRecent(searches) {
   catch {}
 }
 
+function parseShareParam() {
+  try {
+    const param = new URLSearchParams(window.location.search).get('share');
+    if (!param) return null;
+    return window.decodeShareData ? window.decodeShareData(param) : null;
+  } catch {
+    return null;
+  }
+}
+
 function App() {
-  const initial = [
-    { id: 1, value: '' },
-    { id: 2, value: '' },
-  ];
+  const sharedData = parseShareParam();
+
+  const initial = sharedData
+    ? sharedData.spots
+    : [{ id: 1, value: '' }, { id: 2, value: '' }];
+
   const [spots, setSpots] = useStateM(initial);
   const [focused, setFocused] = useStateM(null);
-  const [screen, setScreen] = useStateM('home');
+  const [screen, setScreen] = useStateM(sharedData ? 'result' : 'home');
+  const [sharedResults, setSharedResults] = useStateM(sharedData ? sharedData.results : null);
   const [recentSearches, setRecentSearches] = useStateM(loadRecent);
   const [showNoTrainPopup, setShowNoTrainPopup] = useStateM(false);
 
@@ -47,13 +60,20 @@ function App() {
 
   const onSearch = () => {
     setFocused(null);
+    setSharedResults(null);
     const filledSpots = spots.filter(s => s.value.trim());
     addToRecent(filledSpots);
     setScreen('loading');
     setTimeout(() => setScreen('result'), 1800);
   };
 
-  const onBack = () => setScreen('home');
+  const onBack = () => {
+    setSharedResults(null);
+    if (window.history && window.location.search.includes('share=')) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    setScreen('home');
+  };
 
   const onRetry = () => {
     setScreen('loading');
@@ -112,6 +132,7 @@ function App() {
               onBack={onBack}
               phase={screen}
               timeSetting={timeSetting}
+              sharedResults={sharedResults}
               onNoTrain={() => { setScreen('home'); setShowNoTrainPopup(true); }}
             />
           </div>
