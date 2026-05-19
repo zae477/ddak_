@@ -280,12 +280,10 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
     const shareUrl = `https://ddak-middle.com/?share=${shareParam}`;
     if (navigator.share) {
       navigator.share({
-        title: `딱중간 — ${topResult.name}역`,
-        text: `${stationNames}의 공평한 중간지점은 ${topResult.name}역! (공평도 ${topResult.score}점)`,
-        url: shareUrl,
+        text: `우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`,
       });
     } else {
-      navigator.clipboard.writeText(shareUrl).then(() => alert('링크가 복사됐어요!'));
+      navigator.clipboard.writeText(`우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`).then(() => alert('링크가 복사됐어요!'));
     }
   }}
   style={{
