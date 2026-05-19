@@ -14,26 +14,10 @@ function saveRecent(searches) {
   catch {}
 }
 
-function parseShareParam() {
-  try {
-    const param = new URLSearchParams(window.location.search).get('share');
-    if (!param) return null;
-    return window.decodeShareData ? window.decodeShareData(param) : null;
-  } catch {
-    return null;
-  }
-}
-
 function App() {
-  const sharedData = parseShareParam();
-
-  const initial = sharedData
-    ? sharedData.spots
-    : [{ id: 1, value: '' }, { id: 2, value: '' }];
-
-  const [spots, setSpots] = useStateM(initial);
+  const [spots, setSpots] = useStateM([{ id: 1, value: '' }, { id: 2, value: '' }]);
   const [focused, setFocused] = useStateM(null);
-  const [screen, setScreen] = useStateM(sharedData ? 'loading' : 'home');
+  const [screen, setScreen] = useStateM('home');
   const [sharedResults, setSharedResults] = useStateM(null);
   const [recentSearches, setRecentSearches] = useStateM(loadRecent);
   const [showNoTrainPopup, setShowNoTrainPopup] = useStateM(false);
@@ -47,9 +31,18 @@ function App() {
   });
 
   useEffectM(() => {
-    if (sharedData) {
-      setTimeout(() => setScreen('result'), 1800);
-    }
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('s');
+    if (!shareId) return;
+    setScreen('loading');
+    fetch(`/api/share?id=${shareId}`)
+      .then(r => r.json())
+      .then(({ spots: names }) => {
+        if (!names) return;
+        setSpots(names.map((v, i) => ({ id: i + 1, value: v })));
+        setTimeout(() => setScreen('result'), 1800);
+      })
+      .catch(() => setScreen('home'));
   }, []);
 
   const addToRecent = (filledSpots) => {

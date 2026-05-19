@@ -4,16 +4,22 @@ const { useState: useState2, useMemo: useMemo2, useRef: useRef2, useEffect: useE
 
 // ── URL 인코딩/디코딩 ─────────────────────────────────────────
 
-function encodeShareData(spots) {
-  return spots.map(s => encodeURIComponent(s.value)).join(',');
+async function createShareLink(spots) {
+  const res = await fetch('/api/share', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spots: spots.map(s => s.value) }),
+  });
+  const { id } = await res.json();
+  return `https://ddak-middle.com/?s=${id}`;
 }
 
-function decodeShareData(encoded) {
+function decodeShareData(param) {
   try {
-    const names = encoded.split(',').map(s => decodeURIComponent(s)).filter(Boolean);
+    const names = param.split(',').map(s => decodeURIComponent(s)).filter(Boolean);
     if (names.length < 2) return null;
     const spots = names.map((v, i) => ({ id: i + 1, value: v }));
-    return { spots, results: null };
+    return { spots };
   } catch {
     return null;
   }
@@ -253,17 +259,14 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
           <span>다시 검색</span>
         </button>
         <button
-  onClick={() => {
-    const stationNames = filled.map(s => s.value).join(' · ');
+  onClick={async () => {
     const topResult = results[0];
-    const shareParam = encodeShareData(filled);
-    const shareUrl = `https://ddak-middle.com/?share=${shareParam}`;
+    const shareUrl = await createShareLink(filled);
+    const text = `우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`;
     if (navigator.share) {
-      navigator.share({
-        text: `우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`,
-      });
+      navigator.share({ text });
     } else {
-      navigator.clipboard.writeText(`우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`).then(() => alert('링크가 복사됐어요!'));
+      navigator.clipboard.writeText(text).then(() => alert('링크가 복사됐어요!'));
     }
   }}
   style={{
