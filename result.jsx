@@ -281,7 +281,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
     const stationNames = filled.map(s => s.value).join(' · ');
     const topResult = results[0];
     const shareParam = encodeShareData(filled, results);
-    const base = 'https://project-six-ecru-51.vercel.app';
+    const base = 'https://zae477-ddak-vng8.vercel.app';
     const shareUrl = `${base}/?share=${shareParam}`;
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
