@@ -274,36 +274,19 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
         </button>
         <button
   onClick={() => {
-    if (!window.Kakao) { alert('카카오 SDK 로딩 중입니다. 잠시 후 다시 눌러주세요.'); return; }
-    if (!window.Kakao.isInitialized()) {
-      window.Kakao.init(window.ENV.KAKAO_JS_KEY);
-    }
     const stationNames = filled.map(s => s.value).join(' · ');
     const topResult = results[0];
     const shareParam = encodeShareData(filled, results);
-    const base = 'https://ddak-middle.com';
-    const shareUrl = `${base}/?share=${shareParam}`;
-    window.Kakao.Share.sendDefault({
-      objectType: 'feed',
-      content: {
-        title: `📍 딱중간 — ${topResult.name}역`,
-        description: `${stationNames}의 공평한 중간지점이에요!\n공평도 ${topResult.score}점`,
-        imageUrl: `${base}/og-image.png`,
-        link: {
-          mobileWebUrl: shareUrl,
-          webUrl: shareUrl,
-        },
-      },
-      buttons: [
-        {
-          title: '결과 보기',
-          link: {
-            mobileWebUrl: shareUrl,
-            webUrl: shareUrl,
-          },
-        },
-      ],
-    });
+    const shareUrl = `https://ddak-middle.com/?share=${shareParam}`;
+    if (navigator.share) {
+      navigator.share({
+        title: `딱중간 — ${topResult.name}역`,
+        text: `${stationNames}의 공평한 중간지점은 ${topResult.name}역! (공평도 ${topResult.score}점)`,
+        url: shareUrl,
+      });
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => alert('링크가 복사됐어요!'));
+    }
   }}
   style={{
     flex: 1, height: 56, borderRadius: 100,
