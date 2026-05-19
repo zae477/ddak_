@@ -262,7 +262,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
   onClick={async () => {
     const topResult = results[0];
     const shareUrl = await createShareLink(filled);
-    const text = `우리의 딱중간은 ${topResult.name}\n딱중간에서 자세히 보기\n${shareUrl}`;
+    const text = `📍 우리 딱중간 【${topResult.name}역】이래\n지하철로 딱 여기가 중간임\n\n딱중간에서 자세히 보기 → ${shareUrl}`;
     if (navigator.share) {
       navigator.share({ text });
     } else {
