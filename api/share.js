@@ -2,8 +2,8 @@
 // POST /api/share  { spots: ["강남", "신촌"] }  → { id: "abc123" }
 // GET  /api/share?id=abc123                     → { spots: ["강남", "신촌"] }
 
-const KV_URL = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+const KV_URL = process.env.KV_REST_API_URL || 'https://cool-goose-130103.upstash.io';
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || 'gQAAAAAAAfw3AAIgcDE4NTg4Y2U3OTkyNWU0OTdmYWNiYTM4ZTkwNWY3MGE4Mw';
 
 async function kvSet(key, value, exSeconds = 60 * 60 * 24 * 30) {
   const res = await fetch(`${KV_URL}/set/${key}/${encodeURIComponent(JSON.stringify(value))}?ex=${exSeconds}`, {
