@@ -33,8 +33,8 @@ function App() {
 
   const [spots, setSpots] = useStateM(initial);
   const [focused, setFocused] = useStateM(null);
-  const [screen, setScreen] = useStateM(sharedData ? 'result' : 'home');
-  const [sharedResults, setSharedResults] = useStateM(sharedData ? sharedData.results : null);
+  const [screen, setScreen] = useStateM(sharedData ? 'loading' : 'home');
+  const [sharedResults, setSharedResults] = useStateM(null);
   const [recentSearches, setRecentSearches] = useStateM(loadRecent);
   const [showNoTrainPopup, setShowNoTrainPopup] = useStateM(false);
 
@@ -45,6 +45,12 @@ function App() {
     date: `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`,
     time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
   });
+
+  useEffectM(() => {
+    if (sharedData) {
+      setTimeout(() => setScreen('result'), 1800);
+    }
+  }, []);
 
   const addToRecent = (filledSpots) => {
     const names = filledSpots.map(s => s.value).filter(Boolean);

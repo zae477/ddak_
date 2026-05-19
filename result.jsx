@@ -4,36 +4,16 @@ const { useState: useState2, useMemo: useMemo2, useRef: useRef2, useEffect: useE
 
 // ── URL 인코딩/디코딩 ─────────────────────────────────────────
 
-function encodeShareData(spots, results) {
-  const payload = {
-    s: spots.map(s => s.value),
-    r: results.slice(0, 10).map(r => ({
-      n: r.name,
-      l: r.line || '',
-      c: r.color || '',
-      sc: r.score,
-      t: r.times.map(t => ({ f: t.from, m: t.mins, tr: t.transfers || 0 })),
-    })),
-  };
-  return btoa(encodeURIComponent(JSON.stringify(payload)));
+function encodeShareData(spots) {
+  return spots.map(s => encodeURIComponent(s.value)).join(',');
 }
 
 function decodeShareData(encoded) {
   try {
-    const payload = JSON.parse(decodeURIComponent(atob(encoded)));
-    const spots = payload.s.map((v, i) => ({ id: i + 1, value: v }));
-    const results = payload.r.map((r, idx) => ({
-      name: r.n,
-      line: r.l,
-      color: r.c,
-      score: r.sc,
-      fairScore: r.sc,
-      finalScore: r.sc,
-      rank: idx + 1,
-      times: r.t.map(t => ({ from: t.f, mins: t.m, transfers: t.tr })),
-      venues: { restaurant: 0, cafe: 0, bar: 0 },
-    }));
-    return { spots, results };
+    const names = encoded.split(',').map(s => decodeURIComponent(s)).filter(Boolean);
+    if (names.length < 2) return null;
+    const spots = names.map((v, i) => ({ id: i + 1, value: v }));
+    return { spots, results: null };
   } catch {
     return null;
   }
@@ -276,7 +256,7 @@ function ResultScreen({ spots, onBack, phase, timeSetting, sharedResults, onNoTr
   onClick={() => {
     const stationNames = filled.map(s => s.value).join(' · ');
     const topResult = results[0];
-    const shareParam = encodeShareData(filled, results);
+    const shareParam = encodeShareData(filled);
     const shareUrl = `https://ddak-middle.com/?share=${shareParam}`;
     if (navigator.share) {
       navigator.share({
