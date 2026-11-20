@@ -32,7 +32,8 @@ function App() {
       .then(({ spots: sharedSpots, destination, meeting }) => {
         if (!active) return;
         setSpots(sharedSpots);
-        setSearch({ spots: sharedSpots, destination, meeting, source: 'shared_link' });
+        const currentDestination = SubwayGraph.matchStation(destination) || destination;
+        setSearch({ spots: sharedSpots, destination: currentDestination, meeting, source: 'shared_link' });
         setScreen('result');
         track('shared_link_open', { station_count: sharedSpots.length });
       })

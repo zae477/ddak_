@@ -12,6 +12,16 @@ function calcFairScore(times) {
   return { score: Math.max(0, Math.min(100, Math.round(score))), raw: score, mean };
 }
 
+function dominates(alternative, candidate) {
+  let improvesSomeone = false;
+  for (const [index, time] of alternative.times.entries()) {
+    const current = candidate.times[index];
+    if (time.mins > current.mins || time.transfers > current.transfers) return false;
+    if (time.mins < current.mins || time.transfers < current.transfers) improvesSomeone = true;
+  }
+  return improvesSomeone;
+}
+
 function calculateResults(spots, preferred) {
   const origins = new Map();
   const failedSpots = [];
@@ -27,21 +37,29 @@ function calculateResults(spots, preferred) {
   }
   if (stations.length < 2) return { results: [], stations, failedSpots };
 
-  const candidates = SubwayGraph.findMiddleStations(stations.map(value => ({ value })));
-  const ranked = candidates.map(candidate => {
+  const candidates = SubwayGraph.findMiddleStations(stations.map(value => ({ value })), preferred);
+  const scored = candidates.map(candidate => {
     const times = candidate.times.map(time => ({
       ...time, people: origins.get(time.from), weight: Math.min(2, origins.get(time.from)),
     }));
     const score = calcFairScore(times);
-    return { name: candidate.name, times, ...score };
+    return { ...candidate, times, ...score };
   }).sort((a, b) => b.raw - a.raw || a.mean - b.mean || a.name.localeCompare(b.name, 'ko'));
 
+  const eligible = scored.filter(candidate => candidate.eligible);
+  const recommended = [];
+  const alternatives = [];
+  for (const candidate of eligible) {
+    if (eligible.some(alternative => dominates(alternative, candidate))) alternatives.push(candidate);
+    else recommended.push(candidate);
+  }
+  const ranked = [...recommended, ...alternatives];
   const visible = ranked.slice(0, 10);
-  const preferredIndex = ranked.findIndex(candidate => candidate.name === preferred);
-  if (preferredIndex >= 10) visible[visible.length - 1] = ranked[preferredIndex];
+  const shared = scored.find(candidate => candidate.name === preferred);
+  if (shared && !visible.includes(shared)) visible.splice(9, 1, shared);
   const results = visible.map(candidate => ({
     ...candidate,
-    rank: ranked.indexOf(candidate) + 1,
+    rank: candidate.eligible ? ranked.indexOf(candidate) + 1 : null,
     lines: SubwayGraph.linesAt(candidate.name),
   }));
   return { results, stations, failedSpots };
@@ -242,7 +260,7 @@ function ResultCard({ r, selected, onClick, delay = 0 }) {
       animation: `slideUp 0.45s cubic-bezier(.2,.8,.2,1) ${delay}ms both`,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        {Icon.trophy(r.rank)}
+        {r.rank ? Icon.trophy(r.rank) : <span style={{ color: T.body, fontSize: 12, fontWeight: 700 }}>공유</span>}
         <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, minWidth: 0 }}>
           <span style={{ fontSize: 19, fontWeight: 800, color: T.ink, letterSpacing: '-0.035em' }}>{r.name}</span>
           {r.lines.map(line => <React.Fragment key={line}>{Icon.subway(getLineColor(line), line)}</React.Fragment>)}
