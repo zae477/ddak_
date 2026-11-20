@@ -53,6 +53,7 @@ function ResultScreen({ search, onBack }) {
   const [selected, setSelected] = useState2(0);
   const [showAll, setShowAll] = useState2(false);
   const [shareOpen, setShareOpen] = useState2(false);
+  const [meetingDrafts, setMeetingDrafts] = useState2(() => ({ [search.destination]: search.meeting }));
   const [closedBanners, setClosedBanners] = useState2([]);
   const shareButton = useRef2(null);
   const filled = search.spots;
@@ -88,6 +89,10 @@ function ResultScreen({ search, onBack }) {
   const { results, failedSpots, stations } = state;
   const visibleResults = showAll ? results : results.slice(0, 3);
   const pick = results[selected] || results[0];
+  const travelMinutes = pick.times.map(time => time.mins);
+  const longest = Math.max(...travelMinutes);
+  const timeGap = longest - Math.min(...travelMinutes);
+  const sharedMeeting = pick.name === search.destination ? search.meeting : null;
   const destinationUnavailable = search.destination && pick.name !== search.destination && !results.some(r => r.name === search.destination);
   const closeShare = () => {
     setShareOpen(false);
@@ -136,6 +141,16 @@ function ResultScreen({ search, onBack }) {
           <h2 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: T.ink, letterSpacing: '-0.04em', lineHeight: 1.2 }}>
             딱중간은 <span style={{ color: T.pink }}>{pick.name}</span>
           </h2>
+          <dl className="result-time-summary" aria-label="추천역 예상 이동시간 요약">
+            <div><dt>가장 긴 이동시간</dt><dd>{longest}분</dd></div>
+            <div><dt>출발역 간 시간 차이</dt><dd>{timeGap}분</dd></div>
+          </dl>
+          {(sharedMeeting?.at || sharedMeeting?.place) && (
+            <dl className="shared-meeting" aria-label="공유받은 약속 정보">
+              {sharedMeeting.at && <div><dt>약속 시간</dt><dd>{formatMeetingTime(sharedMeeting.at)} (한국 시간)</dd></div>}
+              {sharedMeeting.place && <div><dt>만날 곳</dt><dd>{sharedMeeting.place}</dd></div>}
+            </dl>
+          )}
           <p style={{ margin: '10px 0 0', fontSize: 13.5, color: T.body, fontWeight: 500, letterSpacing: '-0.015em', lineHeight: 1.6 }}>
             이동시간과 환승을 바탕으로 계산한 예상값이에요.<br/>열차 대기시간과 막차는 카카오맵에서 확인해 주세요.
           </p>
@@ -201,7 +216,9 @@ function ResultScreen({ search, onBack }) {
           <span>친구에게 공유하기</span>
         </button>
       </div>
-      {shareOpen && <ShareSheet onClose={closeShare} result={pick} url={createResultLink(stations, pick.name)}/>}
+      {shareOpen && <ShareSheet onClose={closeShare} result={pick} stations={stations}
+        draft={meetingDrafts[pick.name]}
+        onDraftChange={draft => setMeetingDrafts(drafts => ({ ...drafts, [pick.name]: draft }))}/>}
     </div>
   );
 }

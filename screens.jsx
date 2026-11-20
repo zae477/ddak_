@@ -298,10 +298,19 @@ function RadiusExpandBanner() {
 }
 
 // ── Share bottom sheet ────────────────────────────────────────
-function ShareSheet({ onClose, result, url }) {
+function ShareSheet({ onClose, result, stations, draft, onDraftChange }) {
   const dialog = useRefS(null);
   const [status, setStatus] = useStateS('');
   const [manualCopy, setManualCopy] = useStateS(false);
+  const { at = '', place = '' } = draft || {};
+  const meeting = meetingDetails(at, place);
+  const url = createResultLink(stations, result.name, meeting);
+  const description = [
+    meeting.at && `${formatMeetingTime(meeting.at)} (한국 시간)`,
+    meeting.place,
+  ].filter(Boolean).join('\n');
+  const copyLabel = description ? '메시지' : '링크';
+  const copyText = description ? `우리 딱중간은 ${result.name}\n${description}\n\n${url}` : url;
 
   useEffectS(() => {
     const element = dialog.current;
@@ -314,26 +323,32 @@ function ShareSheet({ onClose, result, url }) {
     onClose();
   };
 
+  const updateDraft = (field, value) => {
+    onDraftChange({ at, place, [field]: value });
+    setManualCopy(false);
+    setStatus('');
+  };
+
   const shareKakao = async () => {
     track('share_intent', { method: 'kakaotalk' });
     try {
-      await openKakaoShare(url, result.name);
+      await openKakaoShare(url, result.name, description);
       setStatus('카카오톡 공유 창에서 받을 친구를 선택해 주세요.');
     } catch {
-      setStatus('카카오톡을 열지 못했어요. 링크를 복사해서 보낼 수 있어요.');
+      setStatus(`카카오톡을 열지 못했어요. ${copyLabel}를 복사해서 보낼 수 있어요.`);
       track('share_error', { method: 'kakaotalk' });
     }
   };
 
   const copy = async () => {
     try {
-      await copyResultLink(url);
+      await copyShareText(copyText);
       setManualCopy(false);
-      setStatus('링크를 복사했어요.');
+      setStatus(`${copyLabel}를 복사했어요.`);
       track('share', { method: 'clipboard', content_type: 'station_result' });
     } catch {
       setManualCopy(true);
-      setStatus('아래 링크를 길게 눌러 직접 복사해 주세요.');
+      setStatus(`아래 ${copyLabel}를 길게 눌러 직접 복사해 주세요.`);
       track('share_error', { method: 'clipboard' });
     }
   };
@@ -365,13 +380,27 @@ function ShareSheet({ onClose, result, url }) {
           marginBottom: 18,
         }}>{result.name} 추천 결과를 보내요.</div>
 
+        <div className="share-meeting-fields" aria-describedby="share-meeting-help">
+          <label>
+            <span>약속 시간 <small>선택 · 한국 시간</small></span>
+            <input type="datetime-local" value={at} max="9999-12-31T23:59"
+              onChange={event => updateDraft('at', event.target.value)}/>
+          </label>
+          <label>
+            <span>만날 곳 <small>선택</small></span>
+            <input type="text" value={place} maxLength={MEETING_PLACE_LIMIT} placeholder="예: 1번 출구 앞"
+              onChange={event => updateDraft('place', event.target.value)}/>
+          </label>
+          <p id="share-meeting-help">입력한 약속 정보는 공유 링크를 받은 사람도 볼 수 있어요.</p>
+        </div>
+
         <div style={{ display: 'flex', gap: 16, justifyContent: 'space-around', paddingBottom: 8 }}>
           <ShareOption bg="#FEE500" label="카카오톡" onClick={shareKakao} icon={
             <svg width="28" height="28" viewBox="0 0 28 28">
               <path d="M14 5C8.48 5 4 8.58 4 13c0 2.74 1.72 5.15 4.33 6.55l-.99 3.6c-.1.37.31.67.64.47L12.2 21c.59.08 1.19.12 1.8.12 5.52 0 10-3.58 10-8s-4.48-8-10-8z" fill="#181600"/>
             </svg>
           }/>
-          <ShareOption bg="#EDF2FE" label="링크 복사" onClick={copy} icon={
+          <ShareOption bg="#EDF2FE" label={`${copyLabel} 복사`} onClick={copy} icon={
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7L11.5 7" stroke={T.primary} strokeWidth="2" strokeLinecap="round"/>
               <path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7L12.5 17" stroke={T.primary} strokeWidth="2" strokeLinecap="round"/>
@@ -386,7 +415,7 @@ function ShareSheet({ onClose, result, url }) {
           }/>
         </div>
         {status && <p role="status" style={{ margin: '12px 0 0', color: T.body, fontSize: 13, lineHeight: 1.5 }}>{status}</p>}
-        {manualCopy && <input aria-label="공유 링크" readOnly value={url} onFocus={event => event.target.select()}
+        {manualCopy && <textarea aria-label={`공유 ${copyLabel}`} readOnly value={copyText} rows={description ? 4 : 2} onFocus={event => event.target.select()}
           style={{ width: '100%', padding: 10, marginTop: 8, border: `1px solid ${T.hairline2}`, borderRadius: 8 }}/>}
       </div>
     </dialog>

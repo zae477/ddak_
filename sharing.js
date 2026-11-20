@@ -4,11 +4,35 @@ function parseStationList(names) {
   return names.map((name, i) => ({ id: i + 1, value: name.trim() }));
 }
 
-function createResultLink(stations, destination) {
+const MEETING_PLACE_LIMIT = 60;
+const meetingTimeFormat = new Intl.DateTimeFormat('ko-KR', {
+  timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric',
+  weekday: 'short', hour: 'numeric', minute: '2-digit',
+});
+
+function meetingDetails(at, place) {
+  const wallTime = /^(?!0000)\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at || '')
+    ? new Date(at + 'Z') : null;
+  const validTime = Number.isFinite(wallTime?.getTime()) && wallTime.toISOString().slice(0, 16) === at;
+  const normalizedPlace = (place || '').trim().replace(/\s+/g, ' ');
+  return {
+    at: validTime ? at : '',
+    place: normalizedPlace.length <= MEETING_PLACE_LIMIT ? normalizedPlace : '',
+  };
+}
+
+function formatMeetingTime(at) {
+  // Display the entered Korean wall time consistently on devices in any time zone.
+  return meetingTimeFormat.format(new Date(at + 'Z'));
+}
+
+function createResultLink(stations, destination, meeting) {
   const url = new URL('/', location.origin);
   if (location.hostname === 'ddak-middle.com') url.hostname = 'www.ddak-middle.com';
   for (const station of stations) url.searchParams.append('from', station);
   url.searchParams.set('meet', destination);
+  if (meeting?.at) url.searchParams.set('at', meeting.at);
+  if (meeting?.place) url.searchParams.set('place', meeting.place);
   return url.href;
 }
 
@@ -17,7 +41,7 @@ async function loadSharedSearch(params, signal) {
     const spots = parseStationList(params.getAll('from'));
     const destination = params.get('meet');
     if (!spots || !destination || destination.length > 80) throw new Error('invalid share link');
-    return { spots, destination };
+    return { spots, destination, meeting: meetingDetails(params.get('at'), params.get('place')) };
   }
 
   const id = params.get('s');
@@ -30,7 +54,7 @@ async function loadSharedSearch(params, signal) {
   return { spots, destination: null };
 }
 
-function openKakaoShare(url, station) {
+function openKakaoShare(url, station, description) {
   const kakao = window.Kakao;
   const key = window.ENV?.KAKAO_JS_KEY;
   if (!kakao || !key) throw new Error('Kakao SDK unavailable');
@@ -40,7 +64,7 @@ function openKakaoShare(url, station) {
     objectType: 'feed',
     content: {
       title: '우리 딱중간은 ' + station,
-      description: '출발역별 예상 소요시간과 다른 추천역도 확인해 보세요.',
+      description: description || '출발역별 예상 소요시간과 다른 추천역도 확인해 보세요.',
       imageUrl: 'https://www.ddak-middle.com/share-card.png',
       imageWidth: 1200,
       imageHeight: 630,
@@ -51,18 +75,18 @@ function openKakaoShare(url, station) {
   });
 }
 
-async function copyResultLink(url) {
+async function copyShareText(text) {
   if (navigator.clipboard?.writeText) {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(text);
       return;
     } catch {}
   }
   const field = document.createElement('textarea');
-  field.value = url;
+  field.value = text;
   field.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
   const previousFocus = document.activeElement;
-  document.body.appendChild(field);
+  (previousFocus?.closest('dialog[open]') || document.body).appendChild(field);
   field.select();
   try {
     if (!document.execCommand('copy')) throw new Error('clipboard unavailable');

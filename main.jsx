@@ -25,10 +25,10 @@ function App() {
     const deadline = setTimeout(() => controller.abort(), 5000);
     let active = true;
     loadSharedSearch(params, controller.signal)
-      .then(({ spots: sharedSpots, destination }) => {
+      .then(({ spots: sharedSpots, destination, meeting }) => {
         if (!active) return;
         setSpots(sharedSpots);
-        setSearch({ spots: sharedSpots, destination, source: 'shared_link' });
+        setSearch({ spots: sharedSpots, destination, meeting, source: 'shared_link' });
         setScreen('result');
         track('shared_link_open', { station_count: sharedSpots.length });
       })

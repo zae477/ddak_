@@ -25,8 +25,20 @@
   #root { width: 100%; height: 100vh; height: 100dvh; }
   .app-shell { position: relative; width: 100%; max-width: 640px; margin: 0 auto; height: 100%; }
   .bottom-actions { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-  .share-dialog { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; width: 100%; max-width: 640px; border: 0; border-radius: 24px 24px 0 0; animation: sheetUp 0.2s ease; }
+  .result-time-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+  .result-time-summary > div { padding: 10px 12px; border-radius: 12px; background: #fff; }
+  .result-time-summary dt, .shared-meeting dt { color: #50555b; font-size: 12px; font-weight: 600; }
+  .result-time-summary dd { margin: 3px 0 0; color: #1a1a1a; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .shared-meeting { display: grid; gap: 7px; margin: 8px 0 0; padding: 11px 12px; border-radius: 12px; background: #ffe9f2; }
+  .shared-meeting > div { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: baseline; gap: 6px; }
+  .shared-meeting dd { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+  .share-dialog { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; width: 100%; max-width: 640px; max-height: calc(100% - 16px); overflow-y: auto; border: 0; border-radius: 24px 24px 0 0; animation: sheetUp 0.2s ease; }
   .share-dialog::backdrop { background: rgba(0,0,0,0.48); }
+  .share-meeting-fields { display: grid; gap: 10px; margin: 0 0 20px; }
+  .share-meeting-fields label { display: grid; gap: 5px; color: #1a1a1a; font-size: 13px; font-weight: 700; }
+  .share-meeting-fields small { margin-left: 4px; color: #575d65; font-size: 12px; font-weight: 500; }
+  .share-meeting-fields input { min-width: 0; width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #d9d9d9; border-radius: 10px; background: #fff; color: #1a1a1a; font-size: 16px; font-family: inherit; }
+  .share-meeting-fields p { margin: 0; color: #575d65; font-size: 12px; line-height: 1.45; }
   .restaurant-toggle { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 10px; border: 1px solid #e4e4e4; border-radius: 10px; background: #f7f7f7; color: #1a1a1a; text-align: left; cursor: pointer; }
   .restaurant-toggle > span:nth-child(2) { color: #5a554e; font-size: 12px; }
   .restaurant-toggle__chevron { margin-left: auto; display: flex; transition: transform 0.18s ease; }
