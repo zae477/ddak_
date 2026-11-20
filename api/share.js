@@ -1,51 +1,52 @@
-// api/share.js — 공유 링크 저장/조회
-// POST /api/share  { spots: ["강남", "신촌"] }  → { id: "abc123" }
-// GET  /api/share?id=abc123                     → { spots: ["강남", "신촌"] }
+// The legacy short-link endpoint remains available for existing messages.
+import { randomBytes } from 'node:crypto';
 
-const KV_URL = process.env.KV_REST_API_URL || 'https://cool-goose-130103.upstash.io';
-const KV_TOKEN = process.env.KV_REST_API_TOKEN || 'gQAAAAAAAfw3AAIgcDE4NTg4Y2U3OTkyNWU0OTdmYWNiYTM4ZTkwNWY3MGE4Mw';
-
-async function kvSet(key, value, exSeconds = 60 * 60 * 24 * 30) {
-  const res = await fetch(`${KV_URL}/set/${key}/${encodeURIComponent(JSON.stringify(value))}?ex=${exSeconds}`, {
-    headers: { Authorization: `Bearer ${KV_TOKEN}` },
-  });
-  return res.ok;
-}
-
-async function kvGet(key) {
-  const res = await fetch(`${KV_URL}/get/${key}`, {
-    headers: { Authorization: `Bearer ${KV_TOKEN}` },
-  });
-  const data = await res.json();
-  if (!data.result) return null;
-  return JSON.parse(decodeURIComponent(data.result));
-}
-
-function makeId() {
-  return Math.random().toString(36).slice(2, 8);
+function validSpots(spots) {
+  return Array.isArray(spots) && spots.length >= 2 && spots.length <= 10
+    && spots.every(name => typeof name === 'string' && name.trim() && name.length <= 80);
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (req.method === 'POST') {
-    const { spots } = req.body;
-    if (!spots || spots.length < 2) return res.status(400).json({ error: 'spots required' });
-    const id = makeId();
-    await kvSet(`share:${id}`, spots);
-    return res.status(200).json({ id });
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).end();
+  }
+  const id = req.method === 'GET' ? req.query.id : randomBytes(7).toString('hex');
+  if (typeof id !== 'string' || !/^[a-z0-9]{1,32}$/i.test(id)) {
+    return res.status(400).json({ error: 'invalid id' });
+  }
+  const spots = req.body?.spots;
+  if (req.method === 'POST' && !validSpots(spots)) {
+    return res.status(400).json({ error: 'invalid stations' });
   }
 
-  if (req.method === 'GET') {
-    const { id } = req.query;
-    if (!id) return res.status(400).json({ error: 'id required' });
-    const spots = await kvGet(`share:${id}`);
-    if (!spots) return res.status(404).json({ error: 'not found' });
-    return res.status(200).json({ spots });
-  }
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return res.status(503).json({ error: 'legacy sharing unavailable' });
 
-  res.status(405).end();
+  try {
+    const base = url.replace(/\/$/, '');
+    const key = 'share:' + id;
+    const options = {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(4000),
+    };
+    if (req.method === 'POST') {
+      const value = encodeURIComponent(JSON.stringify(spots));
+      const response = await fetch(base + '/set/' + key + '/' + value + '?ex=2592000', options);
+      if (!response.ok || (await response.json()).result !== 'OK') throw new Error('legacy store failed');
+      return res.status(200).json({ id });
+    }
+    const response = await fetch(base + '/get/' + key, options);
+    if (!response.ok) throw new Error('legacy lookup failed');
+    const { result } = await response.json();
+    if (!result) return res.status(404).json({ error: 'not found' });
+    let names;
+    try { names = JSON.parse(result); }
+    catch { names = JSON.parse(decodeURIComponent(result)); }
+    if (!validSpots(names)) return res.status(404).json({ error: 'not found' });
+    return res.status(200).json({ spots: names });
+  } catch {
+    return res.status(502).json({ error: 'legacy sharing unavailable' });
+  }
 }

@@ -16,11 +16,15 @@ const LINE1 = [
   ['신설동','동묘앞',2],['동묘앞','동대문',2],['동대문','종로5가',2],['종로5가','종로3가',2],
   ['종로3가','종각',2],['종각','시청',2],['시청','서울역',2],['서울역','남영',2],
   ['남영','용산',2],['용산','노량진',3],['노량진','대방',2],['대방','신길',2],
-  ['신길','영등포',2],['영등포','신도림',3],['신도림','구일',2],['구일','개봉',2],
+  ['신길','영등포',2],['영등포','신도림',3],['신도림','구로',2],['구로','구일',2],['구일','개봉',2],
   ['개봉','오류동',2],['오류동','온수',2],['온수','역곡',3],['역곡','소사',3],
   ['소사','부천',3],['부천','중동',2],['중동','송내',2],['송내','부개',2],['부개','부평',3],
   ['부평','백운',2],['백운','동암',2],['동암','간석',2],['간석','주안',3],
   ['주안','도화',2],['도화','제물포',2],['제물포','도원',2],['도원','동인천',3],['동인천','인천',3],
+  ['구로','가산디지털단지',3],['가산디지털단지','독산',3],['독산','금천구청',2],
+  ['금천구청','석수',3],['석수','관악',3],['관악','안양',3],['안양','명학',3],
+  ['명학','금정',3],['금정','군포',3],['군포','당정',2],['당정','의왕',3],
+  ['의왕','성균관대',4],['성균관대','화서',3],['화서','수원',3],
 ];
 
 const LINE2 = [
@@ -90,7 +94,7 @@ const LINE5 = [
 
 const LINE6 = [
   ['응암','역촌',2],['역촌','불광',2],['불광','독바위',2],['독바위','연신내',2],
-  ['연신내','구산',2],['구산','새절',2],['새절','증산',2],['증산','디지털미디어시티',2],
+  ['연신내','구산',2],['구산','응암',2],['응암','새절',2],['새절','증산',2],['증산','디지털미디어시티',2],
   ['디지털미디어시티','월드컵경기장',2],['월드컵경기장','마포구청',2],['마포구청','망원',2],
   ['망원','합정',2],['합정','상수',2],['상수','광흥창',2],['광흥창','대흥',2],
   ['대흥','공덕',2],['공덕','효창공원앞',2],['효창공원앞','삼각지',2],['삼각지','녹사평',2],
@@ -111,14 +115,18 @@ const LINE7 = [
   ['청담','뚝섬유원지',3],['뚝섬유원지','건대입구',2],['건대입구','어린이대공원',3],
   ['어린이대공원','군자',2],['군자','중곡',2],['중곡','용마산',2],['용마산','면목',2],
   ['면목','사가정',2],['사가정','중화',2],['중화','먹골',2],['먹골','태릉입구',3],
-  ['태릉입구','공릉',2],['공릉','하계',2],['하계','중계',2],['중계','상계',2],
-  ['상계','노원',2],['노원','마들',2],['마들','수락산',3],['수락산','도봉산',3],
+  ['태릉입구','공릉',2],['공릉','하계',2],['하계','중계',2],['중계','노원',2],
+  ['노원','마들',2],['마들','수락산',3],['수락산','도봉산',3],['도봉산','장암',3],
   // 인천 구간
-  ['부평구청','산곡',3],['산곡','석바위시장',3],['석바위시장','인천시청',3],
-  ['인천시청','작전',3],['작전','갈산',3],['갈산','부평시장',3],['부평시장','부평',2],
+  ['온수','까치울',3],['까치울','부천종합운동장',3],['부천종합운동장','춘의',2],
+  ['춘의','신중동',2],['신중동','부천시청',2],['부천시청','상동',2],
+  ['상동','삼산체육관',2],['삼산체육관','굴포천',2],['굴포천','부평구청',2],
+  ['부평구청','산곡',3],['산곡','석남',3],
 ];
 
 const LINE8 = [
+  ['별내','다산',3],['다산','동구릉',3],['동구릉','구리',3],['구리','장자호수공원',3],
+  ['장자호수공원','암사역사공원',4],['암사역사공원','암사',3],
   ['암사','천호',2],['천호','강동구청',2],['강동구청','몽촌토성',2],['몽촌토성','잠실',3],
   ['잠실','석촌',2],['석촌','송파',2],['송파','가락시장',2],['가락시장','문정',2],
   ['문정','장지',2],['장지','복정',3],['복정','산성',3],['산성','남한산성입구',2],
@@ -156,8 +164,11 @@ const SUINBUNDANG = [
   ['모란','태평',2],['태평','가천대',2],['가천대','복정',3],['복정','수서',3],
   ['수서','대모산입구',2],['대모산입구','개포동',2],['개포동','구룡',2],
   ['구룡','도곡',2],['도곡','한티',2],['한티','선릉',2],['선릉','선정릉',2],
-  ['선정릉','압구정로데오',2],['압구정로데오','강남구청',2],
-  ['강남구청','학동',2],['학동','매봉',2],
+  ['선정릉','강남구청',2],['강남구청','압구정로데오',2],
+  ['압구정로데오','서울숲',3],['서울숲','왕십리',3],['왕십리','청량리',4],
+  ['수원','고색',3],['고색','오목천',3],['오목천','어천',4],['어천','야목',3],
+  ['야목','사리',3],['사리','한대앞',3],['한대앞','중앙',3],['중앙','고잔',3],
+  ['고잔','초지',3],['초지','안산',2],['안산','신길온천',3],['신길온천','정왕',3],['정왕','오이도',3],
   ['오이도','달월',3],['달월','월곶',3],['월곶','소래포구',3],
   ['소래포구','인천논현',3],['인천논현','호구포',3],['호구포','남동인더스파크',3],
   ['남동인더스파크','원인재',3],['원인재','연수',3],['연수','송도',3],
@@ -165,27 +176,28 @@ const SUINBUNDANG = [
 ];
 
 const GYEONGUI = [
-  ['문산','운천',5],['운천','파주',5],['파주','월롱',4],['월롱','금촌',3],
-  ['금촌','금릉',3],['금릉','교하',4],['교하','야당',3],['야당','탄현',3],
+  ['임진강','운천',3],['운천','문산',4],['문산','파주',5],['파주','월롱',4],['월롱','금촌',3],
+  ['금촌','금릉',3],['금릉','운정',4],['운정','야당',3],['야당','탄현',3],
   ['탄현','일산',3],['일산','풍산',3],['풍산','백마',3],['백마','곡산',3],
   ['곡산','대곡',3],['대곡','능곡',3],['능곡','행신',3],['행신','강매',3],
   ['강매','화전',3],['화전','수색',3],['수색','디지털미디어시티',2],
   ['디지털미디어시티','가좌',3],['가좌','홍대입구',3],['홍대입구','서강대',2],
-  ['서강대','공덕',2],['공덕','서울역',4],['서울역','효창공원앞',3],
+  ['서강대','공덕',2],['공덕','효창공원앞',3],
+  ['가좌','신촌(경의중앙)',4],['신촌(경의중앙)','서울역',4],
   ['효창공원앞','용산',2],['용산','이촌',2],['이촌','서빙고',3],['서빙고','한남',3],
   ['한남','옥수',2],['옥수','응봉',2],['응봉','왕십리',2],['왕십리','청량리',4],
   ['청량리','회기',2],['회기','중랑',3],['중랑','상봉',2],['상봉','망우',2],
   ['망우','양원',3],['양원','구리',3],['구리','도농',3],['도농','양정',3],
   ['양정','덕소',3],['덕소','도심',4],['도심','팔당',4],['팔당','운길산',5],
   ['운길산','양수',4],['양수','신원',4],['신원','국수',4],['국수','아신',5],
-  ['아신','오빈',5],['오빈','양평',4],['양평','원덕',5],['원덕','용문',5],
+  ['아신','오빈',5],['오빈','양평(경의중앙)',4],['양평(경의중앙)','원덕',5],['원덕','용문',5],
 ];
 
 const GYEONGCHUN = [
   ['청량리','회기',2],['회기','중랑',3],['중랑','상봉',2],['상봉','망우',2],
   ['망우','갈매',4],['갈매','별내',4],['별내','퇴계원',4],['퇴계원','사릉',5],
-  ['사릉','금곡',4],['금곡','평내호평',4],['평내호평','마석',4],['마석','천마산',5],
-  ['천마산','대성리',5],['대성리','청평',5],['청평','가평',6],['가평','굴봉산',6],
+  ['사릉','금곡',4],['금곡','평내호평',4],['평내호평','천마산',4],['천마산','마석',5],
+  ['마석','대성리',5],['대성리','청평',5],['청평','가평',6],['가평','굴봉산',6],
   ['굴봉산','백양리',5],['백양리','강촌',5],['강촌','김유정',5],
   ['김유정','남춘천',5],['남춘천','춘천',4],
 ];
@@ -193,7 +205,8 @@ const GYEONGCHUN = [
 const AIRPORT = [
   ['서울역','공덕',5],['공덕','홍대입구',4],['홍대입구','디지털미디어시티',3],
   ['디지털미디어시티','마곡나루',5],['마곡나루','김포공항',4],['김포공항','계양',7],
-  ['계양','검암',5],['검암','운서',6],['운서','공항화물청사',4],
+  ['계양','검암',5],['검암','청라국제도시',4],['청라국제도시','영종',9],
+  ['영종','운서',4],['운서','공항화물청사',4],
   ['공항화물청사','인천공항1터미널',3],['인천공항1터미널','인천공항2터미널',6],
 ];
 
@@ -205,9 +218,8 @@ const UISHINSEOL = [
 ];
 
 const GTXA = [
-  ['운정중앙','킨텍스',5],['킨텍스','대곡',5],['대곡','창릉',5],
-  ['창릉','연신내',5],['연신내','서울역',8],['서울역','삼성',7],
-  ['삼성','수서',5],['수서','성남',8],['성남','구성',8],['구성','동탄',10],
+  ['운정중앙','킨텍스',5],['킨텍스','대곡',5],['대곡','연신내',6],['연신내','서울역',5],
+  ['수서','성남',8],['성남','구성',7],['구성','동탄',6],
 ];
 
 const INCHEON1 = [
@@ -230,8 +242,9 @@ const GYEONGGANG = [
 ];
 
 const SINLIM = [
-  ['여의도','샛강',2],['샛강','노량진',3],['노량진','대방',3],
-  ['대방','신림',4],['신림','서원',2],['서원','서울대벤처타운',2],
+  ['샛강','대방',2],['대방','서울지방병무청',2],['서울지방병무청','보라매',2],
+  ['보라매','보라매공원',2],['보라매공원','보라매병원',2],['보라매병원','당곡',2],
+  ['당곡','신림',2],['신림','서원',2],['서원','서울대벤처타운',2],
   ['서울대벤처타운','관악산',2],
 ];
 
@@ -245,8 +258,8 @@ const YONGIN = [
 
 const GIMPO = [
   ['김포공항','고촌',4],['고촌','풍무',4],['풍무','사우',3],
-  ['사우','김포시청',3],['김포시청','장기',3],['장기','운양',3],
-  ['운양','마산',3],['마산','걸포북변',3],['걸포북변','한강신도시',3],
+  ['사우','걸포북변',3],['걸포북변','운양',3],['운양','장기',3],
+  ['장기','마산',3],['마산','구래',3],['구래','양촌',3],
 ];
 
 // ─────────────────────────────────────────────
@@ -266,34 +279,19 @@ const LINE_DATA = [
   { edges: GIMPO, line: '김포도시' },
 ];
 
-// 같은 역 내 환승 노드 (역명이 다르게 불리는 환승역들)
-const TRANSFER_LINKS = [
-  // [역A, 역B, 시간] — 실제로 다른 이름이지만 환승 가능한 역
-  // 이수=총신대입구로 통합했으므로 별도 링크 불필요
-  ['압구정','압구정로데오',5], // 도보 환승
-  ['신사','신사',1], // 신분당↔3호선 환승 (같은 역명)
-];
-
 function buildGraph() {
-  const graph = {};
+  const graph = Object.create(null);
+  const eungamLoop = new Set(['응암', '역촌', '불광', '독바위', '연신내', '구산']);
   const addEdge = (from, to, time, line) => {
-    if (!graph[from]) graph[from] = {};
-    if (!graph[to]) graph[to] = {};
-    if (!graph[from][to] || graph[from][to].time > time) {
-      graph[from][to] = { time, line };
-    }
-    if (!graph[to][from] || graph[to][from].time > time) {
-      graph[to][from] = { time, line };
-    }
+    (graph[from] ??= []).push({ to, time, line });
   };
 
   for (const { edges, line } of LINE_DATA) {
     for (const [from, to, time] of edges) {
       addEdge(from, to, time, line);
+      // 6호선 응암순환 구간은 단방향으로 운행돼요.
+      if (line !== '6' || !eungamLoop.has(from) || !eungamLoop.has(to)) addEdge(to, from, time, line);
     }
-  }
-  for (const [from, to, time] of TRANSFER_LINKS) {
-    if (from !== to) addEdge(from, to, time, '환승');
   }
   return graph;
 }
@@ -305,168 +303,101 @@ const ALL_STATIONS = Object.keys(SUBWAY_GRAPH);
 // 다익스트라
 // ─────────────────────────────────────────────
 function dijkstra(startStation) {
-  const dist = {};
-  const transferCount = {};
+  const dist = Object.create(null);
+  const transfers = Object.create(null);
+  if (!SUBWAY_GRAPH[startStation]) return { dist, transfers };
   const visited = new Set();
-
-  for (const s of ALL_STATIONS) { dist[s] = Infinity; transferCount[s] = 0; }
-
-  if (!SUBWAY_GRAPH[startStation]) return { dist, transfers: transferCount };
-  dist[startStation] = 0;
-
-  // [시간, 역, 현재노선, 환승횟수]
-  const queue = [[0, startStation, null, 0]];
+  const queue = [{ time: 0, station: startStation, line: '', count: 0 }];
 
   while (queue.length > 0) {
-    queue.sort((a, b) => a[0] - b[0]);
-    const [currTime, curr, currLine, currXfer] = queue.shift();
-    if (visited.has(curr)) continue;
-    visited.add(curr);
-
-    const neighbors = SUBWAY_GRAPH[curr];
-    if (!neighbors) continue;
-
-    for (const [next, edge] of Object.entries(neighbors)) {
-      if (visited.has(next)) continue;
-      const isTransfer = currLine !== null && edge.line !== currLine && edge.line !== '환승';
-      const penalty = isTransfer ? 3 : 0;
-      const newTime = currTime + edge.time + penalty;
-      const newXfer = currXfer + (isTransfer ? 1 : 0);
-
-      if (newTime < dist[next] || (newTime === dist[next] && newXfer < transferCount[next])) {
-        dist[next] = newTime;
-        transferCount[next] = newXfer;
-        queue.push([newTime, next, edge.line, newXfer]);
-      }
+    queue.sort((a, b) => b.time - a.time || b.count - a.count);
+    const { time, station, line, count } = queue.pop();
+    const state = station + '|' + line;
+    if (visited.has(state)) continue;
+    visited.add(state);
+    if (dist[station] === undefined) {
+      dist[station] = time;
+      transfers[station] = count;
+    }
+    for (const edge of SUBWAY_GRAPH[station]) {
+      const change = line && line !== edge.line ? 1 : 0;
+      queue.push({
+        time: time + edge.time + change * 3,
+        station: edge.to,
+        line: edge.line,
+        count: count + change,
+      });
     }
   }
-  return { dist, transfers: transferCount };
+  return { dist, transfers };
 }
 
 // ─────────────────────────────────────────────
 // 역명 별칭 매핑 (카카오에서 다르게 불리는 역들)
 // ─────────────────────────────────────────────
-const STATION_ALIAS = {
+const STATION_ALIAS = new Map(Object.entries({
   // 동일역 통합: 7호선 이수 = 4호선 총신대입구 → 총신대입구 하나로
   '이수': '총신대입구',
   '총신대입구이수': '총신대입구',
   '이수총신대입구': '총신대입구',
   '서울대': '서울대입구',
-  '한강신도시구래': '한강신도시',
-  '한강신도시(구래)': '한강신도시',
-};
+  '한강신도시': '구래',
+  '한강신도시구래': '구래',
+  '한강신도시(구래)': '구래',
+  '뚝섬한강공원': '뚝섬유원지',
+  '자양': '뚝섬유원지',
+  '불암산': '당고개',
+  '능길': '신길온천',
+  '419민주묘지': '4.19민주묘지',
+  '4·19민주묘지': '4.19민주묘지',
+}));
 
 // ─────────────────────────────────────────────
 // 역명 정규화
 // ─────────────────────────────────────────────
 function normalizeStationName(name) {
-  if (!name) return '';
-  let n = name.trim();
-  // "OO역 N호선" → "OO" (카카오가 "이수역 7호선" 형태로 반환)
-  n = n.replace(/역\s+\S+호선.*$/, '');
-  n = n.replace(/역\s+신분당.*$/, '');
-  n = n.replace(/역\s+경의.*$/, '');
-  n = n.replace(/역\s+수인.*$/, '');
-  n = n.replace(/역\s+공항.*$/, '');
-  n = n.replace(/역\s+우이.*$/, '');
-  n = n.replace(/역\s+GTX.*$/, '');
-  // "OO역" → "OO"
-  n = n.replace(/역$/, '');
-  // "OO(XX선)" 괄호 제거
-  n = n.replace(/\(.*?\)/g, '').trim();
-  // "서울 OO" 앞 서울 제거
-  n = n.replace(/^서울\s+/, '');
-  // 별칭 매핑
-  if (STATION_ALIAS[n]) return STATION_ALIAS[n];
-  if (STATION_ALIAS[n.toLowerCase()]) return STATION_ALIAS[n.toLowerCase()];
-  return n;
+  if (typeof name !== 'string') return '';
+  const input = name.normalize('NFKC').trim().replace(/\s+/g, ' ');
+  if (SUBWAY_GRAPH[input]) return input;
+  if (/^(신촌|양평)역?\s*\(?경의/.test(input)) {
+    return input.startsWith('신촌') ? '신촌(경의중앙)' : '양평(경의중앙)';
+  }
+  const base = input.split(/역\s+/)[0].replace(/\([^)]*\)/g, '').trim();
+  if (SUBWAY_GRAPH[base]) return base;
+  const nameWithoutSuffix = base.replace(/역$/, '').replace(/\s/g, '');
+  return STATION_ALIAS.get(input) || STATION_ALIAS.get(nameWithoutSuffix)
+    || (nameWithoutSuffix === '서울' ? '서울역' : nameWithoutSuffix);
 }
 
-function findClosestStation(name) {
-  if (SUBWAY_GRAPH[name]) return name;
-  // 포함 탐색
-  const exact = ALL_STATIONS.find(s => s === name);
-  if (exact) return exact;
-  const contains = ALL_STATIONS.find(s => s.includes(name) || name.includes(s));
-  return contains || null;
+function matchStation(name) {
+  const normalized = normalizeStationName(name);
+  return SUBWAY_GRAPH[normalized] ? normalized : null;
 }
 
 // ─────────────────────────────────────────────
 // 중간역 찾기 (메인 로직)
 // ─────────────────────────────────────────────
 function findMiddleStations(spots) {
-  const filled = spots.filter(s => s.value && s.value.trim());
-  if (filled.length < 2) return [];
-
-  const dijkstraResults = [];
-  for (const spot of filled) {
-    const name = normalizeStationName(spot.value);
-    const matched = SUBWAY_GRAPH[name] ? name : findClosestStation(name);
-    if (matched) {
-      dijkstraResults.push({ spotName: spot.value, graphName: matched, result: dijkstra(matched) });
-    }
-  }
-
-  if (dijkstraResults.length < 2) return [];
-
-  // 출발역 간 최대 소요시간 계산 (중간역 필터 기준)
-  // 출발역 A→B 직접 거리를 구해서, 그보다 먼 역은 중간역이 될 수 없음
-  const originDists = [];
-  for (let i = 0; i < dijkstraResults.length; i++) {
-    for (let j = i + 1; j < dijkstraResults.length; j++) {
-      const distAtoB = dijkstraResults[i].result.dist[dijkstraResults[j].graphName] ?? 999;
-      originDists.push(distAtoB);
-    }
-  }
-  // 출발역들 간 최대 직선거리
-  const maxOriginDist = Math.max(...originDists);
-
-  // 모든 역에 대해 점수 계산
-  const candidates = [];
-  for (const station of ALL_STATIONS) {
-    const times = dijkstraResults.map(r => ({
-      from: r.spotName,
-      mins: r.result.dist[station] ?? 999,
-      transfers: r.result.transfers[station] ?? 0,
-    }));
-
-    if (times.some(t => t.mins >= 999)) continue;
-
-    const maxTime = Math.max(...times.map(t => t.mins));
-    const minTime = Math.min(...times.map(t => t.mins));
-    const sumTime = times.reduce((a, t) => a + t.mins, 0);
-
-    if (maxTime > 70) continue; // 최대 70분 내 역만
-
-    // 출발역 자체는 제외 (0분인 역)
-    if (minTime === 0) continue;
-
-    // 출발역들 간 거리보다 합계가 너무 작은 역 제외
-    // (출발역 사이를 벗어난 방향에 있는 역 필터링)
-    // 예: 강남↔교대(3분)인데 신사(6+6=12분)는 합계가 출발역 거리의 4배 → 너무 멀리 돌아감
-    if (dijkstraResults.length === 2 && maxOriginDist > 0) {
-      // 중간역 합계가 출발역 직접거리보다 너무 크면 제외
-      // 허용 범위: 출발역 거리의 1.5배 + 5분
-      const threshold = Math.max(maxOriginDist * 2.0 + 5, 20);
-      if (sumTime > threshold) continue;
-    }
-
-    candidates.push({ name: station, times });
-  }
-
-  // 출발역이 너무 가까운 경우 (5분 이내) → 출발역 자체를 후보로 반환
-  if (candidates.length === 0 || (dijkstraResults.length === 2 && maxOriginDist <= 5)) {
-    return dijkstraResults.map(r => ({
-      name: r.graphName,
-      times: dijkstraResults.map(r2 => ({
-        from: r2.spotName,
-        mins: r2.result.dist[r.graphName] ?? 0,
-        transfers: r2.result.transfers[r.graphName] ?? 0,
-      })),
-    }));
-  }
-
-  return candidates;
+  const origins = [...new Set(spots.map(spot => matchStation(spot.value)).filter(Boolean))];
+  if (origins.length === 0) return [];
+  const paths = origins.map(dijkstra);
+  const maxDirect = Math.max(...paths.flatMap(path => origins.map(origin => path.dist[origin] ?? Infinity)));
+  const shortTrip = origins.length === 1 || (origins.length === 2 && maxDirect <= 5);
+  const stations = shortTrip ? origins : ALL_STATIONS;
+  const candidates = stations.map(name => ({
+    name,
+    times: origins.map((from, i) => ({
+      from,
+      mins: paths[i].dist[name] ?? Infinity,
+      transfers: paths[i].transfers[name] ?? 0,
+    })),
+  }));
+  return candidates.filter(({ times }) => {
+    if (times.some(time => time.mins > 70)) return false;
+    if (shortTrip || origins.length !== 2) return true;
+    const total = times[0].mins + times[1].mins;
+    return total <= Math.max(maxDirect * 2 + 5, 20);
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -478,7 +409,9 @@ window.SubwayGraph = {
   dijkstra,
   findMiddleStations,
   normalizeStationName,
-  findClosestStation,
+  matchStation,
+  linesAt: name => [...new Set(LINE_DATA.filter(({ edges }) =>
+    edges.some(([from, to]) => from === name || to === name)).map(({ line }) => line))],
 };
 
 // 주요역 좌표 (번화함 조회용 폴백)

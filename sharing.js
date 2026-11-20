@@ -1,0 +1,110 @@
+function parseStationList(names) {
+  if (!Array.isArray(names) || names.length < 2 || names.length > 10) return null;
+  if (names.some(name => typeof name !== 'string' || !name.trim() || name.length > 80)) return null;
+  return names.map((name, i) => ({ id: i + 1, value: name.trim() }));
+}
+
+function createResultLink(stations, destination) {
+  const url = new URL('/', location.origin);
+  if (location.hostname === 'ddak-middle.com') url.hostname = 'www.ddak-middle.com';
+  for (const station of stations) url.searchParams.append('from', station);
+  url.searchParams.set('meet', destination);
+  return url.href;
+}
+
+async function loadSharedSearch(params, signal) {
+  if (params.has('from') || params.has('meet')) {
+    const spots = parseStationList(params.getAll('from'));
+    const destination = params.get('meet');
+    if (!spots || !destination || destination.length > 80) throw new Error('invalid share link');
+    return { spots, destination };
+  }
+
+  const id = params.get('s');
+  if (!id || !/^[a-z0-9]{1,32}$/i.test(id)) throw new Error('invalid share id');
+  const response = await fetch('/api/share?id=' + encodeURIComponent(id), { signal });
+  if (!response.ok) throw new Error('share link unavailable');
+  const { spots: names } = await response.json();
+  const spots = parseStationList(names);
+  if (!spots) throw new Error('invalid shared stations');
+  return { spots, destination: null };
+}
+
+function openKakaoShare(url, station) {
+  const kakao = window.Kakao;
+  const key = window.ENV?.KAKAO_JS_KEY;
+  if (!kakao || !key) throw new Error('Kakao SDK unavailable');
+  if (!kakao.isInitialized()) kakao.init(key);
+  if (!kakao.Share) throw new Error('Kakao Share unavailable');
+  return kakao.Share.sendDefault({
+    objectType: 'feed',
+    content: {
+      title: '우리 딱중간은 ' + station,
+      description: '출발역별 예상 소요시간과 다른 추천역도 확인해 보세요.',
+      imageUrl: 'https://www.ddak-middle.com/share-card.png',
+      imageWidth: 1200,
+      imageHeight: 630,
+      link: { mobileWebUrl: url, webUrl: url },
+    },
+    buttons: [{ title: '추천 결과 보기', link: { mobileWebUrl: url, webUrl: url } }],
+    installTalk: true,
+  });
+}
+
+async function copyResultLink(url) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(url);
+      return;
+    } catch {}
+  }
+  const field = document.createElement('textarea');
+  field.value = url;
+  field.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+  const previousFocus = document.activeElement;
+  document.body.appendChild(field);
+  field.select();
+  try {
+    if (!document.execCommand('copy')) throw new Error('clipboard unavailable');
+  } finally {
+    field.remove();
+    previousFocus?.focus();
+  }
+}
+
+function saveResultImage(result) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 840;
+  canvas.height = 365 + result.times.length * 60;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#F4F4F4';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#1A1A1A';
+  ctx.fillRect(0, 0, canvas.width, 218);
+  ctx.fillStyle = '#AADC00';
+  ctx.font = '700 34px sans-serif';
+  ctx.fillText('딱중간', 42, 64);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '700 58px sans-serif';
+  ctx.fillText(result.name, 42, 149, 760);
+  ctx.font = '500 24px sans-serif';
+  ctx.fillText('공평도 ' + result.score + ' · 지하철 예상 소요시간', 42, 193, 760);
+  ctx.fillStyle = '#1A1A1A';
+  ctx.font = '600 29px sans-serif';
+  result.times.forEach((time, index) => {
+    const y = 275 + index * 60;
+    ctx.textAlign = 'left';
+    const participants = time.people > 1 ? ' (' + time.people + '명)' : '';
+    ctx.fillText(time.from + participants, 42, y, 410);
+    ctx.textAlign = 'right';
+    ctx.fillText(time.mins + '분 · 환승 ' + time.transfers + '회', 798, y, 300);
+  });
+  ctx.textAlign = 'left';
+  ctx.font = '400 24px sans-serif';
+  ctx.fillText('ddak-middle.com', 42, canvas.height - 42);
+  const href = canvas.toDataURL('image/png');
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = '딱중간-' + result.name + '.png';
+  link.click();
+}

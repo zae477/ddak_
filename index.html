@@ -2,13 +2,63 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>딱중간 · 지하철 중간지점 찾기</title>
+<meta name="description" content="출발역 2~10곳의 지하철 예상 소요시간을 비교해 모두에게 공평한 만남 장소를 찾아요."/>
+<meta name="referrer" content="strict-origin"/>
+<link rel="canonical" href="https://www.ddak-middle.com/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:locale" content="ko_KR"/>
+<meta property="og:title" content="딱중간 · 지하철 중간지점 찾기"/>
+<meta property="og:description" content="어디서 만날까? 지하철로 모두에게 공평한 중간지점을 찾아요."/>
+<meta property="og:image" content="https://www.ddak-middle.com/share-card.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta name="twitter:card" content="summary_large_image"/>
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="/analytics.js" defer></script>
 <style>
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; overflow: hidden; font-family: 'Pretendard Variable', Pretendard, -apple-system, system-ui, sans-serif; }
-  #root { width: 100%; height: 100vh; }
+  html, body { margin: 0; padding: 0; overflow: hidden; font-family: 'Pretendard Variable', Pretendard, -apple-system, system-ui, sans-serif; word-break: keep-all; }
+  body { background: #f4f4f4; }
+  #root { width: 100%; height: 100vh; height: 100dvh; }
+  .app-shell { position: relative; width: 100%; max-width: 640px; margin: 0 auto; height: 100%; }
+  .bottom-actions { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .share-dialog { position: fixed; inset: auto 0 0; margin: 0 auto; padding: 0; width: 100%; max-width: 640px; border: 0; border-radius: 24px 24px 0 0; animation: sheetUp 0.2s ease; }
+  .share-dialog::backdrop { background: rgba(0,0,0,0.48); }
+  .restaurant-toggle { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 9px 10px; border: 1px solid #e4e4e4; border-radius: 10px; background: #f7f7f7; color: #1a1a1a; text-align: left; cursor: pointer; }
+  .restaurant-toggle > span:nth-child(2) { color: #5a554e; font-size: 12px; }
+  .restaurant-toggle__chevron { margin-left: auto; display: flex; transition: transform 0.18s ease; }
+  .restaurant-toggle[aria-expanded="true"] .restaurant-toggle__chevron { transform: rotate(180deg); }
+  .restaurant-section { margin-top: 13px; animation: fadeIn 0.2s ease; }
+  .restaurant-section__heading, .restaurant-section__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+  .restaurant-section__heading { justify-content: space-between; color: #5a554e; font-weight: 600; }
+  .restaurant-section__meta { margin-top: 7px; color: #5e5e5e; font-size: 12px; }
+  .restaurant-section__meta a, .restaurant-status a, .restaurant-retry { color: #195caf; font-weight: 700; }
+  .restaurant-google { font: 400 12px Roboto, sans-serif; letter-spacing: normal; color: #5e5e5e; white-space: nowrap; }
+  .restaurant-status { margin: 9px 0 0; color: #5a554e; line-height: 1.5; }
+  .restaurant-status p { margin: 0 0 7px; }
+  .restaurant-retry { min-height: 36px; margin-right: 10px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; }
+  .restaurant-carousel { display: flex; align-items: stretch; gap: 9px; overflow-x: auto; scroll-snap-type: x proximity; list-style: none; padding: 3px 1px 8px; margin: 7px 0 0; scrollbar-width: thin; scrollbar-color: #cecece transparent; }
+  .restaurant-card { flex: 0 0 min(79%, 226px); min-width: 0; overflow: hidden; scroll-snap-align: start; border: 1px solid #e7e7e7; border-radius: 12px; background: #fff; }
+  .restaurant-card__main { display: block; color: #1a1a1a; text-decoration: none; }
+  .restaurant-card__main:focus-visible { outline-offset: -3px; }
+  .restaurant-card__photo { display: grid; place-items: center; aspect-ratio: 16 / 9; overflow: hidden; background: #ffe9f2; }
+  .restaurant-card__photo img { width: 100%; height: 100%; object-fit: cover; }
+  .restaurant-card__details { display: grid; gap: 4px; padding: 9px 10px 10px; }
+  .restaurant-card__title, .restaurant-card__description { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .restaurant-card__title { font-weight: 800; font-size: 14px; }
+  .restaurant-card__description { color: #5a554e; font-size: 12px; }
+  .restaurant-card__numbers { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 2px 6px; font-size: 12px; color: #3d3935; font-variant-numeric: tabular-nums; }
+  .restaurant-card__star { color: #865800; }
+  .restaurant-card__credits { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; padding: 6px 10px; border-top: 1px solid #f0f0f0; font-size: 11px; color: #5e5e5e; overflow-wrap: anywhere; }
+  .restaurant-card__credits a { display: inline-flex; align-items: center; gap: 3px; color: inherit; }
+  .restaurant-card__credits img { width: 13px; height: 13px; border-radius: 50%; object-fit: cover; }
+  :focus-visible { outline: 2px solid #2465c4; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
   input { font-family: inherit; }
   button { font-family: inherit; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -39,36 +89,20 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><p style="text-align:center;margin:0;padding:28px 16px">딱중간을 불러오는 중이에요.</p></div>
+<noscript><style>#root{display:none}</style>딱중간을 사용하려면 JavaScript를 켜 주세요.</noscript>
 
-<!--
-  API 키 설정 (.env 파일):
-    VITE_PUBLIC_DATA_API_KEY  — 공공데이터포털 대중교통환승경로 API
-    VITE_KAKAO_REST_API_KEY   — 카카오 로컬 REST API (역 자동완성 + 장소 검색)
-
-  Vite 빌드 환경에서는 import.meta.env.VITE_* 로 접근합니다.
-  현재 파일은 standalone Babel 빌드로, window.ENV 에 아래 값을 주입하거나
-  빌드 파이프라인을 통해 교체하세요.
--->
- <script src="/subwayGraph_browser.js"></script>
+<script src="/subwayGraph_browser.js" defer></script>
 <script>
 window.ENV = {
-  PUBLIC_DATA_API_KEY: '601b74f1...',
-  KAKAO_REST_API_KEY: '9dbde146df89f5a58f8e123d8151eaa7',
   KAKAO_JS_KEY: '718d700b2dd54677b148ab6f8ec34683',
 };
 </script>
 
 <!-- 카카오 SDK — 위 ENV 블록 바로 아래에 추가 -->
-<script src="https://t1.kakaocdn.net/kakaojs/2.7.2/kakao.min.js"></script>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js" integrity="sha384-OL+ylM/iuPLtW5U3XcvLSGhE8JzReKDank5InqlHGWPhb4140/yrBw0bg0y7+C9J" crossorigin="anonymous" async></script>
+<script src="/sharing.js" defer></script>
  
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-
-<script type="text/babel" src="app.jsx"></script>
-<script type="text/babel" src="screens.jsx"></script>
-<script type="text/babel" src="result.jsx"></script>
-<script type="text/babel" src="main.jsx"></script>
+<script src="/app.js" defer></script>
 </body>
 </html>

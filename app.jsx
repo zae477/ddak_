@@ -1,201 +1,127 @@
 // app.jsx — 지하철 중간지점 찾기 (Toss-style)
 
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { useState } = React;
 
 // ── Tokens ────────────────────────────────────────────────────
 const T = {
-  bg: '#F8F8F8',
+  bg: '#F4F4F4',
+  paper: '#FFFFFF',
   card: '#FFFFFF',
   primary: '#3182F6',
-  primarySoft: '#E8F2FE',
-  ink: '#191F28',
-  ink2: '#4E5968',
-  ink3: '#8B95A1',
-  line: '#F2F4F6',
-  accent: '#F9FAFB',
+  primarySoft: '#EEF4FF',
+  pink: '#FF2D87',
+  pinkSoft: '#FFE9F2',
+  lime: '#AADC00',
+  ink: '#1A1A1A',
+  inkSoft: '#3D3935',
+  ink2: '#3D3935',
+  ink3: '#8A8A8A',
+  body: '#5A554E',
+  muted: '#8A8A8A',
+  mutedSoft: '#B4B4B4',
+  line: '#ECECEC',
+  hairline: '#ECECEC',
+  hairline2: '#D9D9D9',
+  info: '#3182F6',
+  infoBg: '#EEF4FF',
+  accent: '#F7F7F7',
+  MONO: "'DM Mono', ui-monospace, SFMono-Regular, monospace",
 };
 
-// ── API helpers ───────────────────────────────────────────────
-const KAKAO_KEY = () => window.ENV && window.ENV.KAKAO_REST_API_KEY;
-
-// 카카오 키워드 검색 — 지하철역 자동완성
-async function searchKakaoStation(query) {
-  if (!query.trim()) return [];
-  const key = KAKAO_KEY();
-  if (!key) return [];
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query + ' 역')}&category_group_code=SW8&size=7`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.documents || []).map(d => ({
-      name: d.place_name,
-      address: d.road_address_name || d.address_name,
-      x: parseFloat(d.x),
-      y: parseFloat(d.y),
-      id: d.id,
-      // 호선 파싱: place_name에서 "2호선" 등 추출
-      line: parseLineFromName(d.place_name, d.category_name),
-      color: getLineColor(parseLineFromName(d.place_name, d.category_name)),
-    }));
-  } catch { return []; }
+// ── Brand components ──────────────────────────────────────────
+function BrandPin({ color = '#FF2D87', mirror = false, size = 48, style: s = {} }) {
+  const accent = color.toLowerCase() === '#ff2d87' ? '#AADC00' : '#FF2D87';
+  return (
+    <svg width={size} height={Math.round(size * 1.1)} viewBox="0 0 60 66"
+      style={{ display: 'block', transform: mirror ? 'scaleX(-1)' : 'none', flexShrink: 0, ...s }}
+      aria-hidden="true">
+      <path d="M 22 60 C 18 50, 10 44, 10 24 C 10 12, 20 4, 32 4 C 44 4, 54 12, 54 24 C 54 42, 42 50, 32 56 L 22 60 Z" fill={color}/>
+      <circle cx="34" cy="22" r="5.5" fill="#fff"/>
+      <circle cx="34" cy="22" r="2.4" fill={accent}/>
+      <path d="M 28 32 Q 34 36 40 32" stroke={accent} strokeWidth="2" fill="none" strokeLinecap="round"/>
+    </svg>
+  );
 }
 
-// 역명에서 호선 파싱
-function parseLineFromName(placeName, categoryName) {
-  const cat = categoryName || '';
-  const m = cat.match(/(\d+)호선/) || placeName.match(/(\d+)호선/);
-  if (m) return m[1];
-  if (cat.includes('신분당') || placeName.includes('신분당')) return '신분당';
-  if (cat.includes('경의') || cat.includes('중앙')) return '경의중앙';
-  if (cat.includes('공항')) return '공항';
-  if (cat.includes('분당')) return '분당';
-  if (cat.includes('수인')) return '수인';
-  if (cat.includes('경춘')) return '경춘';
-  if (cat.includes('우이') || cat.includes('신설')) return '우이신설';
-  if (cat.includes('GTX')) return 'GTX';
-  return '';
+const CHAR_VARIANTS = [
+  { img: 'assets/char-default.png', hue:   0 },
+  { img: 'assets/char-banzai.png',  hue:   0 },
+  { img: 'assets/char-wink.png',    hue:  60 },
+  { img: 'assets/char-love.png',    hue: 180 },
+  { img: 'assets/char-shy.png',     hue: 240 },
+  { img: 'assets/char-sleepy.png',  hue: 120 },
+  { img: 'assets/char-default.png', hue: 300 },
+  { img: 'assets/char-banzai.png',  hue: 200 },
+  { img: 'assets/char-wink.png',    hue: 280 },
+  { img: 'assets/char-shy.png',     hue:  40 },
+];
+
+function StationAvatar({ index = 0, filled = false, lineColor, lineNumber = '?', size = 32 }) {
+  if (filled) {
+    return (
+      <span style={{
+        width: size, height: size, borderRadius: '50%',
+        background: lineColor || T.ink3,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontSize: Math.round(size * 0.38), fontWeight: 800,
+        fontFamily: 'inherit', flexShrink: 0,
+      }}>{lineNumber}</span>
+    );
+  }
+  const v = CHAR_VARIANTS[index % CHAR_VARIANTS.length];
+  return (
+    <span style={{
+      width: size, height: size,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      flexShrink: 0,
+    }}>
+      <img src={v.img} alt="" style={{
+        width: size, height: size, display: 'block',
+        filter: v.hue ? `hue-rotate(${v.hue}deg)` : 'none',
+      }}/>
+    </span>
+  );
 }
 
+function MonoTag({ children, color, style: s = {} }) {
+  return (
+    <span style={{
+      fontFamily: T.MONO, fontSize: 11, letterSpacing: '0.16em',
+      color: color || T.muted, textTransform: 'uppercase',
+      fontWeight: 500, whiteSpace: 'nowrap', ...s,
+    }}>{children}</span>
+  );
+}
+
+// ── Station and place data ─────────────────────────────────────
 function getLineColor(line) {
-  const map = {
+  const colors = {
     '1': '#0052A4', '2': '#00A84D', '3': '#EF7C1C', '4': '#00A5DE',
     '5': '#996CAC', '6': '#CD7C2F', '7': '#747F00', '8': '#E6186C',
-    '9': '#BDB092', '신분당': '#BE0B30', '경의중앙': '#77C4A3',
-    '공항': '#4696CD', '분당': '#F5A200', '수인': '#F5A200',
-    '경춘': '#0C8E72', '우이신설': '#B0CE18', 'GTX': '#6200EE',
+    '9': '#81754F', '신분당': '#BE0B30', '경의중앙': '#348A6C', '공항': '#377791',
+    '수인분당': '#946800', '경춘': '#0C8E72', '우이신설': '#627600', 'GTX-A': '#6200EE',
+    '인천1': '#46729E', '경강': '#0054A6', '신림': '#4C7613',
+    '용인경전철': '#548000', '김포도시': '#89610E',
   };
-  return map[line] || '#8B95A1';
+  return colors[line] || '#737D89';
 }
 
-// 카카오 좌표 조회 (역명으로 정확한 위치 가져오기)
-async function getStationCoord(stationName) {
-  const key = KAKAO_KEY();
-  if (!key) return null;
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(stationName)}&category_group_code=SW8&size=1`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const d = data.documents && data.documents[0];
-    if (!d) return null;
-    return { x: parseFloat(d.x), y: parseFloat(d.y), name: d.place_name, id: d.id };
-  } catch { return null; }
+function stationsFor(query) {
+  const item = query.trim();
+  if (!item) return [];
+  const exact = SubwayGraph.matchStation(item);
+  const search = SubwayGraph.normalizeStationName(item);
+  if (!search) return [];
+  const matches = SubwayGraph.ALL_STATIONS.filter(name => name !== exact && name.includes(search));
+  matches.sort((a, b) => Number(!a.startsWith(search)) - Number(!b.startsWith(search)) || a.localeCompare(b, 'ko'));
+  return (exact ? [exact, ...matches] : matches).slice(0, 6);
 }
 
-// 카카오 카테고리 장소 수 조회 (반경 500m)
-async function getVenueCount(x, y, categoryCode) {
-  const key = KAKAO_KEY();
-  if (!key) return 0;
-  try {
-    const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${categoryCode}&x=${x}&y=${y}&radius=500&size=1`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data.meta ? data.meta.total_count : 0;
-  } catch { return 0; }
+async function loadNearbyPlaces(station, signal) {
+  const response = await fetch('/api/kakao?_endpoint=nearby&station=' + encodeURIComponent(station), { signal });
+  if (!response.ok) throw new Error('nearby search failed');
+  return response.json();
 }
-
-// 공공데이터포털 — 지하철 경로 소요시간 조회
-// ws.bus.go.kr 은 CORS 제한이 있어 직접 호출이 불가능한 경우가 많음
-// fallback: 직선거리 기반 추정치 사용
-async function getSubwayRoute(startCoord, endCoord, _time) {
-  const key = window.ENV && window.ENV.PUBLIC_DATA_API_KEY;
-  if (!key || !startCoord || !endCoord) return estimateTime(startCoord, endCoord);
-
-  try {
-    const params = new URLSearchParams({
-      ServiceKey: decodeURIComponent(key),
-      startX: startCoord.x.toFixed(6),
-      startY: startCoord.y.toFixed(6),
-      endX: endCoord.x.toFixed(6),
-      endY: endCoord.y.toFixed(6),
-      format: 'json',
-      count: 1,
-    });
-    const url = `https://ws.bus.go.kr/api/rest/pathinfo/getPathInfoBySubway?${params}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('API error');
-    const data = await res.json();
-    const item = data.msgBody && data.msgBody.itemList && data.msgBody.itemList[0];
-    if (!item) throw new Error('no result');
-    return {
-      mins: Math.round(parseInt(item.totalTime || 30, 10)),
-      transfers: parseInt(item.transferCount || 0, 10),
-      noTrain: false,
-    };
-  } catch {
-    return estimateTime(startCoord, endCoord);
-  }
-}
-
-// 직선거리 기반 소요시간 추정 (API 실패 fallback)
-function estimateTime(from, to) {
-  if (!from || !to) return { mins: 30, transfers: 0, noTrain: false };
-  const dx = (from.x - to.x) * 88.8;  // 1도 ≈ 88.8km (경도, 서울 위도 기준)
-  const dy = (from.y - to.y) * 111.0; // 1도 ≈ 111km (위도)
-  const km = Math.sqrt(dx * dx + dy * dy);
-  const mins = Math.max(5, Math.round(km * 2.5 + 3)); // 지하철 평균속도 고려
-  const transfers = km > 15 ? 2 : km > 7 ? 1 : 0;
-  return { mins, transfers, noTrain: false };
-}
-
-// 두 좌표 사이 거리(km)
-function distKm(a, b) {
-  const dx = (a.x - b.x) * 88.8;
-  const dy = (a.y - b.y) * 111.0;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-// 무게중심 계산
-function centroid(coords) {
-  const n = coords.length;
-  return {
-    x: coords.reduce((s, c) => s + c.x, 0) / n,
-    y: coords.reduce((s, c) => s + c.y, 0) / n,
-  };
-}
-
-// 후보역 목록 (카카오 검색 기반으로 보강된 수도권 주요역)
-// 실제로는 무게중심 기준 카카오 카테고리 검색으로 후보 생성
-async function getCandidateStations(center, radiusKm = 5) {
-  const key = KAKAO_KEY();
-  if (!key) return FALLBACK_STATIONS;
-  try {
-    const radiusM = radiusKm * 1000;
-    // 카카오 SW8(지하철역) 카테고리로 근처 역 탐색
-    const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=SW8&x=${center.x}&y=${center.y}&radius=${Math.min(radiusM, 20000)}&size=15&sort=distance`;
-    const res = await fetch(url, { headers: { Authorization: `KakaoAK ${key}` } });
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    if (!data.documents || data.documents.length === 0) {
-      if (radiusKm < 10) return getCandidateStations(center, 10);
-      return FALLBACK_STATIONS;
-    }
-    return data.documents.map(d => ({
-      name: d.place_name,
-      x: parseFloat(d.x),
-      y: parseFloat(d.y),
-      line: parseLineFromName(d.place_name, d.category_name),
-      color: getLineColor(parseLineFromName(d.place_name, d.category_name)),
-      expanded: radiusKm > 5,
-    }));
-  } catch {
-    return FALLBACK_STATIONS;
-  }
-}
-
-// fallback 후보역 (API 실패 시)
-const FALLBACK_STATIONS = [
-  { name: '서울역', line: '1', color: '#0052A4', x: 126.9723, y: 37.5547 },
-  { name: '공덕역', line: '5', color: '#996CAC', x: 126.9516, y: 37.5444 },
-  { name: '을지로3가', line: '2', color: '#00A84D', x: 126.9934, y: 37.5663 },
-  { name: '종로3가', line: '1', color: '#0052A4', x: 126.9916, y: 37.5703 },
-  { name: '충무로', line: '3', color: '#EF7C1C', x: 126.9939, y: 37.5612 },
-  { name: '왕십리', line: '2', color: '#00A84D', x: 127.0369, y: 37.5613 },
-  { name: '신촌', line: '2', color: '#00A84D', x: 126.9369, y: 37.5550 },
-  { name: '합정역', line: '2', color: '#00A84D', x: 126.9148, y: 37.5496 },
-];
 
 // ── Icons ─────────────────────────────────────────────────────
 const Icon = {
@@ -225,13 +151,13 @@ const Icon = {
     </svg>
   ),
   trophy: (rank) => {
-    const colors = { 1: '#FFB800', 2: '#C4C9D1', 3: '#E8874C' };
+    const bg = rank === 1 ? T.pink : rank === 2 ? '#C4C9D1' : rank === 3 ? '#E8874C' : '#E5E8EB';
     return (
       <div style={{
-        width: 28, height: 28, borderRadius: 999,
-        background: colors[rank] || '#E5E8EB', color: '#fff',
+        width: 26, height: 26, borderRadius: '50%',
+        background: bg, color: '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 800, letterSpacing: -0.3,
+        fontSize: 12, fontWeight: 800, letterSpacing: -0.3, flexShrink: 0,
       }}>{rank}</div>
     );
   },
@@ -348,11 +274,10 @@ function formatRecentLabel(stations) {
 }
 
 // ── Home screen ───────────────────────────────────────────────
-function HomeScreen({ spots, setSpots, onSearch, focused, setFocused, timeSetting, setTimeSetting, recentSearches, onRecentClick }) {
+function HomeScreen({ spots, setSpots, onSearch, focused, setFocused, recentSearches, onRecentClick, notice }) {
   const addSpot = () => {
     if (spots.length >= 10) return;
-    setSpots([...spots, { id: Date.now(), value: '', coord: null }]);
-    setTimeout(() => setFocused(spots.length), 50);
+    setSpots([...spots, { id: Date.now(), value: '' }]);
   };
   const removeSpot = (id) => {
     if (spots.length <= 2) return;
@@ -368,113 +293,130 @@ function HomeScreen({ spots, setSpots, onSearch, focused, setFocused, timeSettin
   return (
     <div style={{
       height: '100%', display: 'flex', flexDirection: 'column',
-      background: T.bg, fontFamily: 'Pretendard', paddingTop: 54,
+      background: T.paper, fontFamily: 'Pretendard', position: 'relative',
+      paddingTop: 'calc(46px + env(safe-area-inset-top, 0px))',
     }}>
+      {/* Mini wordmark */}
+      <div style={{
+        position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 0px))', left: 20,
+        display: 'flex', alignItems: 'center', gap: 6, zIndex: 10,
+      }}>
+        <img src="assets/char-default.png" alt="" style={{ width: 22, height: 22 }}/>
+        <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-0.04em', color: T.ink, whiteSpace: 'nowrap' }}>딱중간</span>
+      </div>
+
+      {/* Mascot */}
+      <div style={{
+        position: 'absolute', right: 22, top: 'calc(12px + env(safe-area-inset-top, 0px))',
+        width: 43, height: 43, transform: 'rotate(-6deg)',
+        pointerEvents: 'none', zIndex: 1,
+      }}>
+        <img src="assets/char-default.png" alt="" style={{ width: '100%', height: '100%' }}/>
+      </div>
+
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 120 }}>
-        {/* Header */}
-        <div style={{ padding: '14px 24px 20px', textAlign: 'center' }}>
+        {/* Hero */}
+        <div style={{ padding: '28px 24px 20px', textAlign: 'center' }}>
           <h1 style={{
-            fontSize: 28, fontWeight: 800, color: T.ink, margin: 0,
-            letterSpacing: -1.0, lineHeight: 1.2,
+            fontSize: 27, fontWeight: 800, color: T.ink, margin: 0,
+            letterSpacing: '-0.035em', lineHeight: 1.25,
           }}>
-            <span style={{ color: T.primary }}>딱중간</span>, 어디서 만날까?
+            <span style={{ color: T.pink }}>딱중간</span>, 어디서 만날까?
           </h1>
           <p style={{
-            margin: '10px 0 0', fontSize: 14, color: T.ink2,
-            letterSpacing: -0.3, lineHeight: 1.5,
-          }}>출발지 2~10곳을 입력하면<br/>모두에게 공평한 중간지점을 찾아드려요.</p>
+            margin: '12px 0 0', fontSize: 14, color: T.body,
+            letterSpacing: '-0.015em', lineHeight: 1.6, fontWeight: 500,
+          }}>
+            출발역 2~10곳을 입력하면<br/>지하철 이동이 공평한 만남 장소를 찾아요.
+          </p>
         </div>
 
         {/* Input cards */}
         <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {spots.map((spot, i) => (
             <InputCard
-              key={spot.id}
-              index={i}
-              spot={spot}
+              key={spot.id} index={i} spot={spot}
               focused={focused === i}
               onFocus={() => setFocused(i)}
               onBlur={() => setFocused(null)}
-              onChange={(v, coord) => updateSpot(spot.id, { value: v, coord: coord || null })}
+              onChange={value => updateSpot(spot.id, { value })}
               onRemove={spots.length > 2 ? () => removeSpot(spot.id) : null}
             />
           ))}
 
           {spots.length < 10 && (
             <button onClick={addSpot} style={{
-              marginTop: 2, height: 54, borderRadius: 16,
-              border: `1.5px dashed ${T.primary}40`,
-              background: 'transparent', color: T.primary,
-              fontSize: 15, fontWeight: 600, letterSpacing: -0.3,
+              marginTop: 2, height: 54, borderRadius: 14,
+              border: `1.5px dashed ${T.pink}`,
+              background: 'transparent', color: T.pink,
+              fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em',
               cursor: 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              {Icon.plus(T.primary)}
-              <span>출발지 추가 ({spots.length}/10)</span>
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <path d="M7 2v10M2 7h10" stroke={T.pink} strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              <span style={{ whiteSpace: 'nowrap' }}>
+                출발지 추가 <span style={{ color: T.muted, fontWeight: 500 }}>({spots.length}/10)</span>
+              </span>
             </button>
           )}
         </div>
 
-        {/* Time setting */}
-        <div style={{ padding: '16px 20px 0' }}>
-          <TimePicker value={timeSetting} onChange={setTimeSetting}/>
-        </div>
+        {notice && <p role="alert" style={{ margin: '16px 20px 0', padding: '12px 14px', background: T.pinkSoft, borderRadius: 12, color: T.ink, fontSize: 14 }}>{notice}</p>}
+        <p style={{ margin: '16px 20px 0', fontSize: 12, color: T.body, lineHeight: 1.6 }}>
+          지원되는 수도권 지하철역의 예상 소요시간을 비교해요. 막차는 출발 전에 확인해 주세요.
+        </p>
+        <a href="/service-info.html" target="_blank" rel="noopener"
+          style={{ display: 'inline-block', margin: '7px 20px 0', fontSize: 12, color: T.body }}>이용 안내 · 개인정보 처리</a>
 
         {/* Recent searches */}
-        <div style={{ padding: '24px 24px 0' }}>
+        {recentSearches.length > 0 && <div style={{ padding: '24px 20px 0' }}>
           <div style={{
-            fontSize: 13, fontWeight: 600, color: T.ink3,
-            marginBottom: 10, letterSpacing: -0.2,
+            fontSize: 13, fontWeight: 600, color: T.inkSoft,
+            marginBottom: 10, letterSpacing: '-0.02em',
           }}>최근 검색</div>
-          {recentSearches.length === 0 ? (
-            <div style={{ padding: '10px 0' }}>
-              <span style={{ fontSize: 13, color: T.ink3, fontWeight: 500, letterSpacing: -0.2 }}>
-                딱중간을 찾아보세요
-              </span>
-            </div>
-          ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {recentSearches.slice(0, 3).map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => onRecentClick && onRecentClick(item)}
-                  style={{
-                    padding: '8px 12px', background: T.card, borderRadius: 999,
-                    fontSize: 13, color: T.ink2, fontWeight: 500, letterSpacing: -0.2,
-                    border: `1px solid ${T.line}`,
-                    display: 'flex', alignItems: 'center', gap: 5,
-                    cursor: 'pointer', fontFamily: 'inherit',
-                    maxWidth: 210, overflow: 'hidden',
-                  }}
-                >
-                  {Icon.clock(T.ink3)}
+                <button key={idx} onClick={() => onRecentClick && onRecentClick(item)} style={{
+                  padding: '8px 14px', background: T.card, borderRadius: 100, border: 'none',
+                  fontSize: 12.5, fontWeight: 500, color: T.inkSoft, letterSpacing: '-0.01em',
+                  boxShadow: '0 1px 3px rgba(60,40,15,0.05), 0 0 0 1px rgba(60,40,15,0.05)',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  maxWidth: 210, overflow: 'hidden',
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 14 14">
+                    <circle cx="7" cy="7" r="5.5" stroke={T.muted} strokeWidth="1.2" fill="none"/>
+                    <path d="M7 4v3l2 1.5" stroke={T.muted} strokeWidth="1.2" strokeLinecap="round"/>
+                  </svg>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {formatRecentLabel(item)}
                   </span>
                 </button>
               ))}
             </div>
-          )}
-        </div>
+        </div>}
       </div>
 
       {/* Fixed CTA */}
-      <div style={{
+      <div className="bottom-actions" style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: '14px 20px 28px',
-        background: `linear-gradient(to top, ${T.bg} 70%, ${T.bg}00)`,
+        paddingTop: 14, paddingLeft: 20, paddingRight: 20,
+        background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 24%)',
       }}>
         <button
           onClick={canSearch ? onSearch : undefined}
           disabled={!canSearch}
           style={{
-            width: '100%', height: 56, borderRadius: 100,
-            background: canSearch ? T.primary : '#D1D6DB',
-            color: '#fff', border: 'none',
-            fontSize: 17, fontWeight: 700, letterSpacing: -0.4,
+            width: '100%', height: 56, borderRadius: 14, border: 'none',
+            background: canSearch ? T.ink : '#D1D6DB',
+            color: canSearch ? '#fff' : T.ink2,
+            fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em',
             fontFamily: 'inherit',
             cursor: canSearch ? 'pointer' : 'not-allowed',
-            boxShadow: canSearch ? '0 6px 16px rgba(49,130,246,0.25)' : 'none',
+            boxShadow: canSearch ? '0 10px 28px -10px rgba(0,0,0,0.45)' : 'none',
+            whiteSpace: 'nowrap',
           }}
         >
           {canSearch ? '딱 맞는 중간 지점 찾기' : `출발지를 ${2 - filledCount}곳 더 입력해주세요`}
@@ -484,103 +426,66 @@ function HomeScreen({ spots, setSpots, onSearch, focused, setFocused, timeSettin
   );
 }
 
-// ── Time picker ───────────────────────────────────────────────
-function TimePicker({ value, onChange }) {
-  return (
-    <div style={{ background: T.card, borderRadius: 16, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', opacity: 0.5, pointerEvents: 'none', userSelect: 'none' }}>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T.ink, letterSpacing: -0.3 }}>현재 시간 기준</div>
-          <div style={{ fontSize: 12, color: T.ink3, marginTop: 2, letterSpacing: -0.2 }}>
-            지금 출발 기준으로 계산해요
-          </div>
-        </div>
-        <div style={{
-          marginLeft: 'auto', width: 50, height: 30, borderRadius: 999,
-          background: '#D1D6DB', position: 'relative',
-        }}>
-          <div style={{
-            position: 'absolute', top: 3, left: 3,
-            width: 24, height: 24, borderRadius: 999, background: '#fff',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-          }}/>
-        </div>
-      </div>
-      <div style={{ marginTop: 10, fontSize: 12, color: T.ink3, fontWeight: 500, letterSpacing: -0.2 }}>
-        잠시만 기다려주세요, 오픈 예정이에요 🔜
-      </div>
-    </div>
-  );
-}
-
-function DateField({ label, display, value, type, onChange }) {
-  return (
-    <label style={{ flex: 1, background: T.accent, borderRadius: 12, padding: '10px 12px', border: `1px solid ${T.line}`, cursor: 'pointer', position: 'relative', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, color: T.ink3, letterSpacing: -0.2 }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: T.ink, display: 'flex', alignItems: 'center', gap: 4, letterSpacing: -0.3 }}>
-        {display} {Icon.chevronDown(T.ink2)}
-      </span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%', border: 'none' }}/>
-    </label>
-  );
-}
-
-// ── Input card — 카카오 자동완성 ─────────────────────────────
+// ── Input card ──────────────────────────────────────────────
 function InputCard({ index, spot, focused, onFocus, onBlur, onChange, onRemove }) {
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const debounceRef = useRef(null);
-  const value = spot.value || '';
+  const [suggestOpen, setSuggestOpen] = useState(true);
+  const [active, setActive] = useState(-1);
+  const value = spot.value;
+  const station = SubwayGraph.matchStation(value);
+  const line = station ? SubwayGraph.linesAt(station)[0] : null;
+  const suggestions = focused && suggestOpen ? stationsFor(value) : [];
+  const listId = 'station-list-' + spot.id;
 
-  // 카카오 API 자동완성 (디바운스 300ms)
-  useEffect(() => {
-    if (!focused || !value.trim()) {
-      setSuggestions([]);
-      return;
-    }
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      const results = await searchKakaoStation(value);
-      setSuggestions(results);
-      setLoading(false);
-    }, 300);
-    return () => clearTimeout(debounceRef.current);
-  }, [value, focused]);
-
-  const selectStation = (s) => {
-    onChange(s.name, { x: s.x, y: s.y, name: s.name, line: s.line, color: s.color });
-    setSuggestions([]);
+  const selectStation = name => {
+    onChange(name);
+    setActive(-1);
     setSuggestOpen(false);
   };
 
-  const selectedStation = spot.coord ? { line: spot.coord.line, color: spot.coord.color } : null;
-
   return (
     <div style={{
-      background: T.card, borderRadius: 16, padding: '14px 14px',
-      border: focused ? `2px solid ${T.primary}` : '2px solid transparent',
+      background: T.card, borderRadius: 14, padding: '14px 14px',
       boxShadow: focused
-        ? `0 0 0 4px ${T.primary}15, 0 4px 14px rgba(49,130,246,0.12)`
-        : '0 1px 3px rgba(0,0,0,0.03)',
+        ? `0 0 0 1.5px ${T.ink}, 0 4px 14px rgba(0,0,0,0.08)`
+        : '0 1px 3px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.06)',
       transition: 'all 0.18s cubic-bezier(.2,.8,.2,1)',
       position: 'relative',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {selectedStation
-          ? Icon.subway(selectedStation.color, selectedStation.line)
-          : <FaceIcon index={index} size={32}/>
-        }
+        <StationAvatar
+          index={index}
+          filled={!!line}
+          lineColor={getLineColor(line)}
+          lineNumber={line || '?'}
+          size={32}
+        />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <input
             value={value}
-            onChange={(e) => onChange(e.target.value, null)}
-            onFocus={() => { onFocus(); setSuggestOpen(true); }}
-            onBlur={() => { setTimeout(() => { setSuggestOpen(false); setSuggestions([]); }, 180); onBlur(); }}
-            placeholder="역을 검색해보세요"
+            role="combobox"
+            aria-label={`출발역 ${index + 1}`}
+            aria-autocomplete="list"
+            aria-expanded={suggestions.length > 0}
+            aria-controls={suggestions.length ? listId : undefined}
+            aria-activedescendant={active >= 0 && suggestions[active] ? listId + '-' + active : undefined}
+            autoComplete="off"
+            maxLength={80}
+            onChange={(e) => { onChange(e.target.value); setSuggestOpen(true); setActive(-1); }}
+            onFocus={() => { onFocus(); setSuggestOpen(true); setActive(-1); }}
+            onBlur={onBlur}
+            onKeyDown={event => {
+              if (event.nativeEvent.isComposing) return;
+              if (event.key === 'Escape') { setSuggestOpen(false); return; }
+              if (!suggestions.length) return;
+              if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const step = event.key === 'ArrowDown' ? 1 : -1;
+                setActive(current => current < 0 && step < 0 ? suggestions.length - 1 : (current + step + suggestions.length) % suggestions.length);
+              }
+              if (event.key === 'Enter' && active >= 0) selectStation(suggestions[active]);
+            }}
+            placeholder="역 이름을 입력해 주세요"
             style={{
               width: '100%', border: 'none', outline: 'none',
               fontSize: 16, fontWeight: 600, color: T.ink,
@@ -589,20 +494,17 @@ function InputCard({ index, spot, focused, onFocus, onBlur, onChange, onRemove }
           />
         </div>
 
-        {loading && (
-          <div style={{ width: 16, height: 16, borderRadius: 999, border: `2px solid ${T.primary}`, borderTopColor: 'transparent', animation: 'spin 0.7s linear infinite', flexShrink: 0 }}/>
-        )}
-
         {value ? (
-          <button onClick={() => { onChange('', null); setSuggestions([]); }} style={{
+          <button aria-label={`출발역 ${index + 1} 입력 지우기`} onClick={() => onChange('')} style={{
             width: 20, height: 20, borderRadius: 999, background: T.line,
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, flexShrink: 0,
           }}>
             {Icon.close(T.ink2)}
           </button>
-        ) : onRemove && (
-          <button onClick={onRemove} style={{
+        ) : null}
+        {onRemove && (
+          <button aria-label={`출발역 ${index + 1} 삭제`} onClick={onRemove} style={{
             border: 'none', background: 'transparent', cursor: 'pointer',
             fontSize: 13, color: T.ink3, fontWeight: 500, fontFamily: 'inherit',
             padding: '4px 2px', flexShrink: 0,
@@ -611,46 +513,36 @@ function InputCard({ index, spot, focused, onFocus, onBlur, onChange, onRemove }
       </div>
 
       {/* Autocomplete dropdown */}
-      {focused && suggestOpen && suggestions.length > 0 && (
-        <div style={{
+      {suggestions.length > 0 && (
+        <div id={listId} role="listbox" aria-label="역 검색 결과" style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0, zIndex: 20,
           background: '#fff', borderRadius: 14,
           boxShadow: '0 12px 32px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)',
           border: `1px solid ${T.line}`, overflow: 'hidden',
         }}>
-          {suggestions.map((s, i) => (
-            <div key={s.id || s.name}
-              onMouseDown={(e) => { e.preventDefault(); selectStation(s); }}
+          {suggestions.map((name, i) => {
+            const lines = SubwayGraph.linesAt(name);
+            return <div key={name} id={listId + '-' + i} role="option" aria-selected={i === active}
+              onPointerDown={event => event.preventDefault()}
+              onClick={() => selectStation(name)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
                 borderBottom: i < suggestions.length - 1 ? `1px solid ${T.line}` : 'none',
-                cursor: 'pointer',
+                cursor: 'pointer', background: i === active ? T.primarySoft : '#fff',
               }}>
-              {Icon.subway(s.color, s.line || '?')}
+              {Icon.subway(getLineColor(lines[0]), lines[0])}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, letterSpacing: -0.3 }}>{s.name}</div>
-                {s.address && (
-                  <div style={{ fontSize: 11, color: T.ink3, marginTop: 1, letterSpacing: -0.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.address}
-                  </div>
-                )}
+                <div style={{ fontSize: 15, fontWeight: 600, color: T.ink, letterSpacing: -0.3 }}>{name}</div>
               </div>
-              {s.line && (
-                <span style={{ fontSize: 11, color: T.ink3, fontWeight: 600, flexShrink: 0 }}>
-                  {s.line.length <= 2 ? s.line + '호선' : s.line}
-                </span>
-              )}
-            </div>
-          ))}
+              <span style={{ fontSize: 11, color: T.body, fontWeight: 600, flexShrink: 0 }}>
+                {lines.map(line => /^\d+$/.test(line) ? line + '호선' : line).join(' · ')}
+              </span>
+            </div>;
+          })}
         </div>
       )}
     </div>
   );
 }
 
-Object.assign(window, {
-  HomeScreen, StatusBar, HomeBar, T, Icon, FaceIcon, FACE_PALETTE,
-  formatRecentLabel, getStationCoord, getVenueCount, getSubwayRoute,
-  getCandidateStations, centroid, distKm, estimateTime, FALLBACK_STATIONS,
-  parseLineFromName, getLineColor,
-});
+Object.assign(window, { HomeScreen, T, Icon, FaceIcon, FACE_PALETTE, getLineColor });
