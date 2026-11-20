@@ -276,6 +276,9 @@ function ResultCard({ r, selected, onClick, delay = 0 }) {
   );
 }
 
+// 맛집 추천을 다시 공개할 때 true로 전환한다.
+const RESTAURANT_RECOMMENDATIONS_ENABLED = false;
+
 function NearbyPlaces({ station }) {
   const [places, setPlaces] = useState2(null);
   const [failed, setFailed] = useState2(false);
@@ -313,18 +316,22 @@ function NearbyPlaces({ station }) {
         {counts.length > 0 ? counts.map(([label, count]) => `${label} ${count.toLocaleString('ko-KR')}곳`).join(' · ')
           : failed || places ? '주변 장소 수를 불러오지 못했어요.' : '주변 장소를 확인 중이에요.'}
       </p>
-      <button type="button" className="restaurant-toggle" aria-expanded={restaurantsOpen} aria-controls={restaurantsId}
-        onClick={() => {
-          if (!restaurantsOpen) track('restaurant_panel_open');
-          setRestaurantsOpen(!restaurantsOpen);
-        }}>
-        <strong>식당</strong>
-        <span>도보 15분 이내</span>
-        <span className="restaurant-toggle__chevron" aria-hidden="true">{Icon.chevronDown(T.body)}</span>
-      </button>
-      <div id={restaurantsId} hidden={!restaurantsOpen}>
-        {restaurantsOpen && <RestaurantRecommendations station={station} mapQuery={mapQuery}/>}
-      </div>
+      {RESTAURANT_RECOMMENDATIONS_ENABLED ? (
+        <>
+          <button type="button" className="restaurant-toggle" aria-expanded={restaurantsOpen} aria-controls={restaurantsId}
+            onClick={() => {
+              if (!restaurantsOpen) track('restaurant_panel_open');
+              setRestaurantsOpen(!restaurantsOpen);
+            }}>
+            <strong>식당</strong>
+            <span>도보 15분 이내</span>
+            <span className="restaurant-toggle__chevron" aria-hidden="true">{Icon.chevronDown(T.body)}</span>
+          </button>
+          <div id={restaurantsId} hidden={!restaurantsOpen}>
+            {restaurantsOpen && <RestaurantRecommendations station={station} mapQuery={mapQuery}/>}
+          </div>
+        </>
+      ) : <p className="restaurant-status" style={{ fontSize: 12 }}>맛집 추천 준비 중</p>}
     </section>
   );
 }
