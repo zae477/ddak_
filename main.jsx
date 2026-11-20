@@ -20,6 +20,10 @@ function App() {
   const [recentSearches, setRecentSearches] = useStateM(loadRecent);
 
   useEffectM(() => {
+    if (screen === 'home') track('home_view');
+  }, [screen]);
+
+  useEffectM(() => {
     if (!isShareLink) return;
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), 5000);
@@ -50,7 +54,9 @@ function App() {
   const onSearch = () => {
     const filled = spots.filter(spot => spot.value.trim());
     const supported = filled.filter(spot => SubwayGraph.matchStation(spot.value));
+    track('search_submit', { station_count: filled.length });
     if (supported.length < 2) {
+      track('search_validation_error');
       setNotice('지원되는 수도권 지하철역을 2곳 이상 입력하거나 검색 목록에서 선택해 주세요.');
       return;
     }

@@ -97,6 +97,7 @@ function ResultScreen({ search, onBack }) {
   const closeShare = () => {
     setShareOpen(false);
     shareButton.current?.focus();
+    track('share_sheet_close', { rank: pick.rank });
   };
 
   return (
@@ -310,7 +311,8 @@ function NearbyPlaces({ station }) {
     <section aria-label="역 주변 장소" style={{ padding: '14px 16px', background: T.card, borderRadius: 14, fontSize: 13 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <strong>역 주변 500m</strong>
-        <a href={mapUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#195CAF', fontWeight: 700 }}>카카오맵에서 보기</a>
+        <a href={mapUrl} target="_blank" rel="noopener noreferrer" onClick={() => track('map_click')}
+          style={{ color: '#195CAF', fontWeight: 700 }}>카카오맵에서 보기</a>
       </div>
       <p role="status" style={{ margin: '8px 0 0', color: T.body, lineHeight: 1.5 }}>
         {counts.length > 0 ? counts.map(([label, count]) => `${label} ${count.toLocaleString('ko-KR')}곳`).join(' · ')

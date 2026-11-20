@@ -60,6 +60,11 @@ function openKakaoShare(url, station, description) {
   if (!kakao || !key) throw new Error('Kakao SDK unavailable');
   if (!kakao.isInitialized()) kakao.init(key);
   if (!kakao.Share) throw new Error('Kakao Share unavailable');
+  const taggedUrl = new URL(url);
+  taggedUrl.searchParams.set('utm_source', 'kakaotalk');
+  taggedUrl.searchParams.set('utm_medium', 'social');
+  taggedUrl.searchParams.set('utm_campaign', 'result_share');
+  const link = { mobileWebUrl: taggedUrl.href, webUrl: taggedUrl.href };
   return kakao.Share.sendDefault({
     objectType: 'feed',
     content: {
@@ -68,9 +73,9 @@ function openKakaoShare(url, station, description) {
       imageUrl: 'https://www.ddak-middle.com/share-card.png',
       imageWidth: 1200,
       imageHeight: 630,
-      link: { mobileWebUrl: url, webUrl: url },
+      link,
     },
-    buttons: [{ title: '추천 결과 보기', link: { mobileWebUrl: url, webUrl: url } }],
+    buttons: [{ title: '추천 결과 보기', link }],
     installTalk: true,
   });
 }
